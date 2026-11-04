@@ -1,22 +1,24 @@
 package khulnasoft
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceEnforcerGroup() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceEnforcerGroupCreate,
-		Read:   resourceEnforcerGroupRead,
-		Update: resourceEnforcerGroupUpdate,
-		Delete: resourceEnforcerGroupDelete,
+		CreateContext: resourceEnforcerGroupCreate,
+		ReadContext:   resourceEnforcerGroupRead,
+		UpdateContext: resourceEnforcerGroupUpdate,
+		DeleteContext: resourceEnforcerGroupDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -62,6 +64,26 @@ func resourceEnforcerGroup() *schema.Resource {
 			"antivirus_protection": {
 				Type:        schema.TypeBool,
 				Description: "This setting is available only when you have license for `Advanced Malware Protection`. Send true to make use of the license and enable the `Real-time Malware Protection` control in the Host Runtime policies.",
+				Optional:    true,
+			},
+			"container_secure_ai": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI for container workloads.",
+				Optional:    true,
+			},
+			"container_secure_ai_local_models": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI local models for container workloads.",
+				Optional:    true,
+			},
+			"host_secure_ai": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI for host workloads.",
+				Optional:    true,
+			},
+			"host_secure_ai_local_models": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI local models for host workloads.",
 				Optional:    true,
 			},
 			"khulnasoft_version": {
@@ -204,7 +226,7 @@ func resourceEnforcerGroup() *schema.Resource {
 				Description: "Set `True` to enable these Host Runtime Policy controls: `OS Users and Groups Allowed` and `OS Users and Groups Blocked`",
 				Optional:    true,
 			},
-			"host_forensics": {
+			"host_forensics_collection": {
 				Type:        schema.TypeBool,
 				Description: "Select Enabled to send activity logs in your host to the Khulnasoft Server for forensics purposes.",
 				Optional:    true,
@@ -372,6 +394,43 @@ func resourceEnforcerGroup() *schema.Resource {
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice([]string{"docker", "crio", "containerd", "garden"}, false),
 			},
+			"schedule_scan_settings": {
+				Type:        schema.TypeList,
+				Description: "Scheduling scan time for which you are creating the Enforcer group.",
+				Optional:    true,
+				Computed:    true,
+				MaxItems:    1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"disabled": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Computed: true,
+						},
+						"is_custom": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Computed: true,
+						},
+						"days": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeInt,
+							},
+						},
+						"time": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeInt,
+							},
+						},
+					},
+				},
+			},
 			"sync_host_images": {
 				Type:        schema.TypeBool,
 				Description: "Set `True` to configure Enforcers to discover local host images. Discovered images will be listed under Images > Host Images, as well as under Infrastructure (in the Images tab for applicable hosts).",
@@ -399,32 +458,38 @@ func resourceEnforcerGroup() *schema.Resource {
 				Description: "Set `True` to apply User Access Control Policies to containers. Note that Khulnasoft Enforcers must be deployed with the KHULNASOFT_RUNC_INTERCEPTION environment variable set to 0 in order to use User Access Control Policies.",
 				Optional:    true,
 			},
+			"enable_enforcer_group_prometheus": {
+				Type:        schema.TypeBool,
+				Description: "Enable Prometheus metrics for the enforcer group.",
+				Optional:    true,
+			},
+			"unified_mode": {
+				Type:        schema.TypeBool,
+				Description: "",
+				Optional:    true,
+			},
 		},
 	}
 }
 
-func resourceEnforcerGroupCreate(d *schema.ResourceData, m interface{}) error {
+func resourceEnforcerGroupCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 
 	group := expandEnforcerGroup(d)
 	err := ac.CreateEnforcerGroup(group)
 
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	err = resourceEnforcerGroupRead(d, m)
-
-	if err == nil {
-		d.SetId(d.Get("group_id").(string))
-	} else {
-		return err
+	if diags := resourceEnforcerGroupRead(ctx, d, m); diags.HasError() {
+		return diags
 	}
-
+	d.SetId(d.Get("group_id").(string))
 	return nil
 }
 
-func resourceEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
+func resourceEnforcerGroupRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	var name string
 	ac := m.(*client.Client)
 	groupId, ok := d.GetOk("group_id")
@@ -442,7 +507,7 @@ func resourceEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
 			d.SetId("")
 			return nil
 		}
-		return err
+		return diag.FromErr(err)
 	}
 
 	d.Set("group_id", r.ID)
@@ -460,9 +525,10 @@ func resourceEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("behavioral_engine", r.BehavioralEngine)
 	d.Set("host_behavioral_engine", r.BehavioralEngine)
 	d.Set("forensics", r.ContainerForensicsCollection)
-	d.Set("host_forensics", r.HostForensicsCollection)
+	d.Set("host_forensics_collection", r.HostForensicsCollection)
 	d.Set("host_network_protection", r.HostNetworkProtection)
 	d.Set("user_access_control", r.UserAccessControl)
+	d.Set("enable_enforcer_group_prometheus", r.EnableEnforcerGroupPrometheus)
 	d.Set("image_assurance", r.ImageAssurance)
 	d.Set("host_protection", r.HostProtection)
 	d.Set("audit_all", r.AuditAll)
@@ -470,6 +536,7 @@ func resourceEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("token", r.Token)
 	d.Set("command", flattenCommands(r.Command))
 	d.Set("orchestrator", flattenOrchestrators(r.Orchestrator))
+	d.Set("schedule_scan_settings", flattenScheduleScanSetting(r.ScheduleScanSettings))
 	d.Set("host_os", r.HostOs)
 	d.Set("install_command", r.InstallCommand)
 	d.Set("hosts_count", r.HostsCount)
@@ -503,16 +570,20 @@ func resourceEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("host_user_protection", r.HostUserProtection)
 	d.Set("container_antivirus_protection", r.ContainerAntivirusProtection)
 	d.Set("host_assurance", r.HostAssurance)
+	d.Set("container_secure_ai", r.ContainerSecureAI)
+	d.Set("container_secure_ai_local_models", r.ContainerSecureAILocalModels)
+	d.Set("host_secure_ai", r.HostSecureAI)
+	d.Set("host_secure_ai_local_models", r.HostSecureAILocalModels)
 	d.Set("gateways", r.Gateways)
 	d.Set("allowed_applications", r.AllowedApplications)
 	d.Set("allowed_labels", r.AllowedLabels)
 	d.Set("allowed_registries", r.AllowedRegistries)
+	d.Set("unified_mode", r.UnifiedMode)
 
 	return nil
 }
 
-func resourceEnforcerGroupUpdate(d *schema.ResourceData, m interface{}) error {
-
+func resourceEnforcerGroupUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	if d.HasChanges("admission_control",
 		"allow_kube_enforcer_audit",
 		"allowed_applications",
@@ -537,6 +608,7 @@ func resourceEnforcerGroupUpdate(d *schema.ResourceData, m interface{}) error {
 		"host_os",
 		"host_protection",
 		"host_user_protection",
+		"host_forensics_collection",
 		"image_assurance",
 		"kube_bench_image_name",
 		"logical_name",
@@ -552,7 +624,14 @@ func resourceEnforcerGroupUpdate(d *schema.ResourceData, m interface{}) error {
 		"syscall_enabled",
 		"type",
 		"user_access_control",
+		"enable_enforcer_group_prometheus",
 		"orchestrator",
+		"schedule_scan_settings",
+		"unified_mode",
+		"container_secure_ai",
+		"container_secure_ai_local_models",
+		"host_secure_ai",
+		"host_secure_ai_local_models",
 	) {
 
 		ac := m.(*client.Client)
@@ -561,23 +640,23 @@ func resourceEnforcerGroupUpdate(d *schema.ResourceData, m interface{}) error {
 		err := ac.UpdateEnforcerGroup(group)
 
 		if err == nil {
-			_ = d.Set("last_updated", time.Now().Format(time.RFC850))
+			_ = d.Set("last_update", time.Now().Unix())
 		} else {
 			log.Println("[DEBUG]  error while updating enforcer r: ", err)
-			return err
+			return diag.FromErr(err)
 		}
 	}
 	return nil
 }
 
-func resourceEnforcerGroupDelete(d *schema.ResourceData, m interface{}) error {
+func resourceEnforcerGroupDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 	name := d.Id()
 	err := ac.DeleteEnforcerGroup(name)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
-	return err
+	return diag.FromErr(err)
 }
 
 func expandEnforcerGroup(d *schema.ResourceData) client.EnforcerGroup {
@@ -632,6 +711,26 @@ func expandEnforcerGroup(d *schema.ResourceData) client.EnforcerGroup {
 	antivirusProtection, ok := d.GetOk("antivirus_protection")
 	if ok {
 		enforcerGroup.AntivirusProtection = antivirusProtection.(bool)
+	}
+
+	containerSecureAI, ok := d.GetOk("container_secure_ai")
+	if ok {
+		enforcerGroup.ContainerSecureAI = containerSecureAI.(bool)
+	}
+
+	containerSecureAILocalModels, ok := d.GetOk("container_secure_ai_local_models")
+	if ok {
+		enforcerGroup.ContainerSecureAILocalModels = containerSecureAILocalModels.(bool)
+	}
+
+	hostSecureAI, ok := d.GetOk("host_secure_ai")
+	if ok {
+		enforcerGroup.HostSecureAI = hostSecureAI.(bool)
+	}
+
+	hostSecureAILocalModels, ok := d.GetOk("host_secure_ai_local_models")
+	if ok {
+		enforcerGroup.HostSecureAILocalModels = hostSecureAILocalModels.(bool)
 	}
 
 	khulnasoftVersion, ok := d.GetOk("khulnasoft_version")
@@ -714,7 +813,7 @@ func expandEnforcerGroup(d *schema.ResourceData) client.EnforcerGroup {
 		enforcerGroup.HostBehavioralEngine = hostBehavioralEngine.(bool)
 	}
 
-	hostForensics, ok := d.GetOk("host_forensics")
+	hostForensics, ok := d.GetOk("host_forensics_collection")
 	if ok {
 		enforcerGroup.HostForensicsCollection = hostForensics.(bool)
 	}
@@ -804,6 +903,16 @@ func expandEnforcerGroup(d *schema.ResourceData) client.EnforcerGroup {
 		enforcerGroup.UserAccessControl = userAccessControl.(bool)
 	}
 
+	enableEnforcerGroupPrometheus, ok := d.GetOk("enable_enforcer_group_prometheus")
+	if ok {
+		enforcerGroup.EnableEnforcerGroupPrometheus = enableEnforcerGroupPrometheus.(bool)
+	}
+
+	unifiedMode, ok := d.GetOk("unified_mode")
+	if ok {
+		enforcerGroup.UnifiedMode = unifiedMode.(bool)
+	}
+
 	token, ok := d.GetOk("token")
 	if ok {
 		enforcerGroup.Token = token.(string)
@@ -827,5 +936,33 @@ func expandEnforcerGroup(d *schema.ResourceData) client.EnforcerGroup {
 		}
 	}
 
+	if v, ok := d.GetOk("schedule_scan_settings"); ok {
+		scanSettingsList := v.([]interface{})
+		if len(scanSettingsList) > 0 && scanSettingsList[0] != nil {
+			catData := scanSettingsList[0].(map[string]interface{})
+
+			sDisabled := catData["disabled"].(bool)
+			sIsCustom := catData["is_custom"].(bool)
+
+			rawDays := catData["days"].([]interface{})
+			sDays := make([]int, len(rawDays))
+			for i, v := range rawDays {
+				sDays[i] = v.(int)
+			}
+
+			rawTime := catData["time"].([]interface{})
+			sTime := make([]int, len(rawTime))
+			for i, v := range rawTime {
+				sTime[i] = v.(int)
+			}
+
+			enforcerGroup.ScheduleScanSettings = client.EnforcerScheduleScanSettings{
+				Disabled: sDisabled,
+				IsCustom: sIsCustom,
+				Days:     sDays,
+				Time:     sTime,
+			}
+		}
+	}
 	return enforcerGroup
 }
