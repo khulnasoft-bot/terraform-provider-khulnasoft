@@ -503,6 +503,19 @@ func dataFunctionAssurancePolicy() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+			"ignore_base_image_vln": {
+				Type:        schema.TypeBool,
+				Description: "",
+				Computed:    true,
+			}, //bool
+			"ignored_sensitive_resources": {
+				Type:        schema.TypeList,
+				Description: "",
+				Computed:    true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 			"application_scopes": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -740,6 +753,12 @@ func dataFunctionAssurancePolicyRead(ctx context.Context, d *schema.ResourceData
 		d.Set("malware_action", iap.MalwareAction)
 		d.Set("partial_results_image_fail", iap.PartialResultsImageFail)
 		d.Set("maximum_score_exclude_no_fix", iap.MaximumScoreExcludeNoFix)
+		d.Set("category", iap.Category)
+		d.Set("ignore_recently_published_fix_vln", iap.IgnoreRecentlyPublishedFixVln)
+		d.Set("ignore_recently_published_fix_vln_period", iap.IgnoreRecentlyPublishedFixVlnPeriod)
+		d.Set("ignore_base_image_vln", iap.IgnoreBaseImageVln)
+		d.Set("ignored_sensitive_resources", iap.IgnoredSensitiveResources)
+		d.Set("aggregated_vulnerability", flattenAggregatedVulnerability(iap.AggregatedVulnerability))
 		d.SetId(name)
 	} else {
 		return diag.FromErr(err)
