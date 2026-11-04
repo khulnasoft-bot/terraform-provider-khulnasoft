@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"io"
 	"log"
-	"strings"
 	"time"
 )
 
@@ -88,10 +87,13 @@ type RuntimePolicy struct {
 	WhitelistedOsUsers        WhitelistedOsUsers        `json:"whitelisted_os_users"`
 	//JSON
 	//EnableCryptoMiningDNS bool `json:"enable_crypto_mining_dns"`
-	BlockContainerExec       bool     `json:"block_container_exec,omitempty"`
-	IsOOTBPolicy             bool     `json:"is_ootb_policy,omitempty"`
-	RuntimeMode              int      `json:"runtime_mode,omitempty"`
-	ExcludeApplicationScopes []string `json:"exclude_application_scopes,omitempty"`
+	BlockContainerExec         bool                       `json:"block_container_exec,omitempty"`
+	IsOOTBPolicy               bool                       `json:"is_ootb_policy,omitempty"`
+	RuntimeMode                int                        `json:"runtime_mode,omitempty"`
+	ExcludeApplicationScopes   []string                   `json:"exclude_application_scopes,omitempty"`
+	SecureAIDiscovery          SecureAIDiscovery          `json:"secure_ai_discovery"`
+	SecureAIProtection         SecureAIProtection         `json:"secure_ai_protection"`
+	SecureAIUnauthorizedModels SecureAIUnauthorizedModels `json:"secure_ai_unauthorized_models"`
 }
 
 type AllowedExecutables struct {
@@ -203,11 +205,26 @@ type LinuxCapabilities struct {
 }
 
 type MalwareScanOptions struct {
-	Action             string   `json:"action"`
-	Enabled            bool     `json:"enabled"`
-	ExcludeDirectories []string `json:"exclude_directories"`
-	ExcludeProcesses   []string `json:"exclude_processes"`
-	IncludeDirectories []string `json:"include_directories"`
+	Action                 string   `json:"action"`
+	Enabled                bool     `json:"enabled"`
+	ExcludeDirectories     []string `json:"exclude_directories"`
+	ExcludeProcesses       []string `json:"exclude_processes"`
+	IncludeDirectories     []string `json:"include_directories"`
+	FileForensicCollection bool     `json:"file_forensic_collection"`
+}
+
+type SecureAIDiscovery struct {
+	Enabled    bool     `json:"enabled"`
+	IgnoreList []string `json:"ignore_list"`
+}
+
+type SecureAIProtection struct {
+	Enabled bool `json:"enabled"`
+}
+
+type SecureAIUnauthorizedModels struct {
+	Enabled          bool     `json:"enabled"`
+	UnauthorizedList []string `json:"unauthorized_list"`
 }
 
 type PortBlock struct {
@@ -296,79 +313,6 @@ type ReverseShell struct {
 
 // JSON
 
-// sanitizePayloadForLogging creates a copy of JSON payload with sensitive fields masked
-func sanitizePayloadForLogging(payload []byte) string {
-	// Parse the JSON payload
-	var data map[string]interface{}
-	if err := json.Unmarshal(payload, &data); err != nil {
-		// If we can't parse it, return a generic message
-		return "[invalid JSON payload]"
-	}
-
-	// Create a copy of the data to modify
-	sanitizedData := make(map[string]interface{})
-	for k, v := range data {
-		sanitizedData[k] = sanitizeValue(v)
-	}
-
-	// Marshal back to JSON
-	sanitizedJSON, err := json.Marshal(sanitizedData)
-	if err != nil {
-		return "[error sanitizing payload]"
-	}
-
-	return string(sanitizedJSON)
-}
-
-// sanitizeValue recursively sanitizes values, masking sensitive fields
-func sanitizeValue(value interface{}) interface{} {
-	switch v := value.(type) {
-	case map[string]interface{}:
-		// Handle nested objects (like Tripwire struct)
-		sanitized := make(map[string]interface{})
-		for key, val := range v {
-			if isSensitiveField(key) {
-				sanitized[key] = "********"
-			} else {
-				sanitized[key] = sanitizeValue(val)
-			}
-		}
-		return sanitized
-	case []interface{}:
-		// Handle arrays
-		sanitized := make([]interface{}, len(v))
-		for i, item := range v {
-			sanitized[i] = sanitizeValue(item)
-		}
-		return sanitized
-	default:
-		// Handle primitive values
-		return v
-	}
-}
-
-// isSensitiveField checks if a field name indicates sensitive information
-func isSensitiveField(fieldName string) bool {
-	sensitiveFields := []string{
-		"user_password",
-		"password",
-		"secret",
-		"key",
-		"token",
-		"auth",
-		"credential",
-		"private",
-	}
-
-	fieldNameLower := strings.ToLower(fieldName)
-	for _, sensitive := range sensitiveFields {
-		if strings.Contains(fieldNameLower, sensitive) {
-			return true
-		}
-	}
-	return false
-}
-
 // CreateRuntimePolicy creates an Khulnasoft RuntimePolicy
 func (cli *Client) CreateRuntimePolicy(runtimePolicy *RuntimePolicy) error {
 	payload, err := json.Marshal(runtimePolicy)
@@ -382,7 +326,7 @@ func (cli *Client) CreateRuntimePolicy(runtimePolicy *RuntimePolicy) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("[DEBUG] Creating runtime policy with payload: %s", sanitizePayloadForLogging(payload))
+	log.Println(string(payload))
 	resp, body, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Post(cli.url + apiPath).Send(string(payload)).End()
 	if errs != nil {
 		return errors.Wrap(getMergedError(errs), "failed creating runtime policy.")
@@ -446,7 +390,6 @@ func (cli *Client) UpdateRuntimePolicy(runtimePolicy *RuntimePolicy) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("[DEBUG] Updating runtime policy '%s' with payload: %s", runtimePolicy.Name, sanitizePayloadForLogging(payload))
 	resp, _, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Put(cli.url + apiPath).Send(string(payload)).End()
 	if errs != nil {
 		return errors.Wrap(getMergedError(errs), "failed modifying runtime policy")
