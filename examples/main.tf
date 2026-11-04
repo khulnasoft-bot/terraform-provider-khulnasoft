@@ -2,7 +2,7 @@ terraform {
   required_providers {
     khulnasoft = {
       source  = "khulnasoft/khulnasoft"
-      version = ">= 0.11.0"
+      version = "0.15.0"
     }
   }
 }
@@ -360,7 +360,7 @@ resource "khulnasoft_container_runtime_policy" "container_runtime_policy" {
   }
 
   # Additional security features
-  enable_fork_guard           = true
+  # Note: enable_fork_guard is deprecated for container runtime policies
   enable_ip_reputation        = true
   enable_crypto_mining_dns    = true
   enable_port_scan_protection = true
@@ -794,7 +794,7 @@ resource "khulnasoft_notification_slack" "example" {
 
   # Optional fields
   icon        = "https://example.com/icon.png"
-  main_text   = "KhulnaSoft alert notification"
+  main_text   = "khulnasoft alert notification"
   name        = "slack-alert"
   service_key = ""
 }
@@ -953,6 +953,96 @@ resource "khulnasoft_vmware_assurance_policy" "example_vmware_assurance_policy" 
   cvss_severity         = "critical"
 }
 
+resource "khulnasoft_log_management" "log_management_cloudwatch" {
+  name         = "CloudWatch"
+  region       = var.aws_region
+  loggroup     = var.aws_log_group
+  key          = var.aws_secret_key
+  keyid        = var.aws_access_key
+  enable       = true
+  audit_filter = ""
+}
+
+#resource "khulnasoft_serverless_application" "serverless_application" {
+#  name               = "tf-test-sls"
+#  region             = "us-west-1"
+#  compute_provider   = 3 # 1 - AWS Lambda, 3 - Azure Function, 5 - Google Cloud Functions
+#  username           = var.azure_username
+#  password           = var.azure_password
+#  tenant_id          = var.azure_tenant_id
+#  subscription_id    = var.azure_subscription_id
+#  scanner_type       = "any"
+#  scanner_group_name = "test-remote-scanner"
+#  description        = "Serverless Application terraform provider"
+#  auto_pull          = true
+#  auto_pull_time     = "03:00"
+#}
+
+resource "khulnasoft_monitoring_system" "prometheus_monitoring" {
+  name     = "Prometheus"
+  enabled  = true
+  interval = 1
+  type     = "prometheus"
+  token    = ""
+}
+
+resource "khulnasoft_suppression_rule" "example" {
+  name               = "example-suppression-rule"
+  application_scopes = ["terraform-suppression-scope-testing"]
+  enable             = true
+  controls {
+    direct_only = true
+    file_globs  = []
+    published_date_filter {
+      enabled = false
+      days    = 30
+    }
+    reachable_only = true
+    scan_type      = "vulnerability"
+    severity       = "critical"
+    target_file    = ""
+    target_line    = 0
+    type           = "vulnerabilitySeverity"
+    vendorfix      = true
+  }
+  description    = "An example suppression rule"
+  clear_schedule = false
+  scope {
+    expression = "(v1) && (v2)"
+    variables {
+      attribute = "repository.branch"
+      value     = "main"
+    }
+    variables {
+      attribute = "repository.provider"
+      value     = "github"
+    }
+  }
+}
+
+resource "khulnasoft_response_policy" "test" {
+  title              = "Test Response Policy"
+  description        = "This is a test response policy"
+  enabled            = true
+  application_scopes = ["Global"]
+
+  trigger {
+    predefined = "Incidents with critical severity"
+
+    input {
+      name = "Incident event"
+    }
+
+    # custom block may be omitted if you don't have anything to set
+  }
+
+  outputs {
+    name = "Terraform Provider Test"
+    type = "email"
+  }
+
+}
+
 #Data sources block
 data "khulnasoft_acknowledges" "acknowledges" {}
 
@@ -1080,8 +1170,8 @@ output "first_group_name" {
 
 data "khulnasoft_image" "test" {
   registry   = "Docker Hub"
-  repository = "nginx"
-  tag        = "alpine3.19"
+  repository = "alpine"
+  tag        = "3.19"
 }
 
 output "image" {
@@ -1154,4 +1244,33 @@ output "data_dashboard_permissions_saas" {
     for ps in data.khulnasoft_permissions_sets_saas.saas.permissions_sets : ps.name
     if contains(ps.actions, "cnapp.dashboards.read")
   ]
+}
+
+#data "khulnasoft_log_managements" "log_managements" {}
+
+#output "log_managements" {
+#  value = data.khulnasoft_log_managements.log_managements
+#}
+
+data "khulnasoft_monitoring_systems" "prom_mon" {}
+
+output "prom_mon_name" {
+  value = data.khulnasoft_monitoring_systems.prom_mon.monitors[0].name
+}
+
+output "prom_mon_interval" {
+  value = length(data.khulnasoft_monitoring_systems.prom_mon.monitors) > 0 ? data.khulnasoft_monitoring_systems.prom_mon.monitors[0].interval : null
+}
+
+data "khulnasoft_response_policies" "all" {}
+
+output "response_policy_id" {
+  value = data.khulnasoft_response_policies.all.data
+}
+
+data "khulnasoft_response_policy_config" "config" {
+}
+
+output "response_policy_config_id" {
+  value = data.khulnasoft_response_policy_config.config.triggers
 }
