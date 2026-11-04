@@ -11,6 +11,11 @@ import (
 
 func init() {
 	log.Println("setup suite")
+	if os.Getenv("TF_ACC") == "" {
+		log.Println("skipping acceptance test setup because TF_ACC is not set")
+		return
+	}
+
 	var (
 		present                                          bool
 		username, password, khulnasoftURL                      string
@@ -22,31 +27,46 @@ func init() {
 	)
 
 	khulnasoftURL, present = os.LookupEnv("KHULNASOFT_URL")
-	if !present {
-		panic("KHULNASOFT_URL env is missing, please set it")
+	if !present || khulnasoftURL == "" {
+		panic("KHULNASOFT_URL env is missing or empty, please set it")
 	}
 
-	apiKey = os.Getenv("KHULNASOFT_API_KEY_ID")
+	apiKey = os.Getenv("KHULNASOFT_API_KEY")
 	secretKey = os.Getenv("KHULNASOFT_API_SECRET")
 	useAPIKeyStr = os.Getenv("KHULNASOFT_USE_API_KEY")
 	useAPIKey = false
+
+	// Check if KHULNASOFT_USE_API_KEY is explicitly set
 	if useAPIKeyStr != "" {
 		var err error
 		useAPIKey, err = strconv.ParseBool(useAPIKeyStr)
 		if err != nil {
-			panic(fmt.Sprintf("Invalid boolean for KHULNASOFT_USE_API_KEY: %v", err))
+			panic(fmt.Sprintf("Invalid boolen for KHULNASOFT_USE_API_KEY: %v", err))
+		}
+	} else {
+		// Auto-detect: use API key auth if API key credentials are provided
+		if apiKey != "" && secretKey != "" {
+			useAPIKey = true
 		}
 	}
 
-	if !useAPIKey {
+	// Get credentials based on auth method
+	if useAPIKey {
+		if apiKey == "" {
+			panic("KHULNASOFT_API_KEY env is missing or empty, please set it when using API key authentication")
+		}
+		if secretKey == "" {
+			panic("KHULNASOFT_API_SECRET env is missing or empty, please set it when using API key authentication")
+		}
+	} else {
 		username, present = os.LookupEnv("KHULNASOFT_USER")
-		if !present {
-			panic("KHULNASOFT_USER env is missing, please set it")
+		if !present || username == "" {
+			panic("KHULNASOFT_USER env is missing or empty, please set it (or use KHULNASOFT_API_KEY and KHULNASOFT_API_SECRET for API key auth)")
 		}
 
 		password, present = os.LookupEnv("KHULNASOFT_PASSWORD")
-		if !present {
-			panic("KHULNASOFT_PASSWORD env is missing, please set it")
+		if !present || password == "" {
+			panic("KHULNASOFT_PASSWORD env is missing or empty, please set it (or use KHULNASOFT_API_KEY and KHULNASOFT_API_SECRET for API key auth)")
 		}
 	}
 
@@ -68,9 +88,15 @@ func init() {
 
 	var khulnasoftClient *client.Client
 	if useAPIKey {
-		khulnasoftClient = client.NewClientWithAPIKey(khulnasoftURL, apiKey, secretKey, verifyTLS, caCertByte)
+		khulnasoftClient, err = client.NewClientWithAPIKey(khulnasoftURL, apiKey, secretKey, verifyTLS, caCertByte)
+		if err != nil {
+			panic(fmt.Errorf("failed to create client with api key auth, error: %s", err))
+		}
 	} else {
-		khulnasoftClient = client.NewClientWithTokenAuth(khulnasoftURL, username, password, verifyTLS, caCertByte)
+		khulnasoftClient, err = client.NewClientWithTokenAuth(khulnasoftURL, username, password, verifyTLS, caCertByte)
+		if err != nil {
+			panic(fmt.Errorf("failed to create client with token auth, error: %s", err))
+		}
 	}
 	token, url, err := khulnasoftClient.GetAuthToken()
 
@@ -80,7 +106,7 @@ func init() {
 
 	err = os.Setenv("TESTING_AUTH_TOKEN", token)
 	if err != nil {
-		panic("Failed to set TESTING_AUTH_TOKEN env")
+		panic("Failed to set AUTH_TOKEN env")
 	}
 
 	err = os.Setenv("TESTING_URL", url)
