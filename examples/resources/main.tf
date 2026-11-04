@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     khulnasoft = {
-      //      version = "0.8.30"
+      //version = "0.15.0"
       source = "khulnasoft/khulnasoft"
     }
   }
@@ -9,8 +9,15 @@ terraform {
 
 provider "khulnasoft" {
   username = "admin"
-  khulnasoft_url = "https://khulnasoft.com"
+  khulnasoft_url = "https://khulnasofturl.com"
   password = "@password"
+
+  # alternatively, you can use API key authentication as below instead of username/password authentication.
+  #  khulnasoft_api_key          = var.khulnasoft_api_key
+  #  khulnasoft_api_secret       = var.khulnasoft_api_secret
+  #  validity              = 240
+  #  allowed_endpoints     = ["ANY"]
+  #  csp_roles             = ["Admin"]
 }
 
 
@@ -86,6 +93,7 @@ resource "khulnasoft_enforcer_groups" "new" {
   description  = "Created1"
   logical_name = "terraform-eg"
   enforce      = true
+  enable_enforcer_group_prometheus = true
   gateways = [
     "local-cluster"
   ]
@@ -117,15 +125,15 @@ resource "khulnasoft_container_runtime_policy" "test" {
   description                   = "This is a container runtime policy"
   enforce                       = true
   enforce_after_days            = 9
-  block_non_compliant_images    = true
   block_non_compliant_workloads = true
   block_container_exec          = true
-  block_unregistered_images     = true
-  enable_drift_prevention       = true
-  allowed_executables = [
-    "test",
-    "exe",
-  ]
+  allowed_executables {
+    enabled = true
+    allow_executables = [
+      "pkg",
+      "txt"
+    ]
+  }
   blocked_executables = [
     "test1",
     "exe1",
@@ -139,10 +147,7 @@ resource "khulnasoft_container_runtime_policy" "test" {
   audit_full_command_arguments = true
   audit_all_network_activity   = true
 
-  enable_fork_guard        = true
-  fork_guard_process_limit = 12
-
-  enable_ip_reputation_security = true
+  # Note: enable_fork_guard and fork_guard_process_limit are deprecated for container runtime policies
 
   malware_scan_options {
     enabled = true
@@ -160,18 +165,9 @@ resource "khulnasoft_container_runtime_policy" "test" {
     "90",
     "9090"
   ]
-  enable_port_scan_detection = true
   blocked_volumes = [
     "blocked",
     "vol"
-  ]
-  readonly_files_and_directories = [
-    "readonly",
-    "/dir/"
-  ]
-  exceptional_readonly_files_and_directories = [
-    "readonly2",
-    "/dir2/"
   ]
   block_access_host_network   = true
   block_adding_capabilities   = true
@@ -189,15 +185,9 @@ resource "khulnasoft_container_runtime_policy" "test" {
 }
 
 resource "khulnasoft_function_runtime_policy" "test" {
-  name                        = "test-function-terraform"
-  description                 = "This is a test description."
-  enforce                     = true
-  block_malicious_executables = true
-
-  blocked_executables = [
-    "bin",
-    "exe",
-  ]
+  name        = "test-function-terraform"
+  description = "This is a test description."
+  enforce     = true
 }
 
 resource "khulnasoft_host_runtime_policy" "test" {
@@ -209,9 +199,7 @@ resource "khulnasoft_host_runtime_policy" "test" {
   blocked_files = [
     "blocked",
   ]
-  audit_all_os_user_activity    = true
-  audit_full_command_arguments  = true
-  enable_ip_reputation_security = true
+  audit_full_command_arguments = true
   os_users_allowed = [
     "user1",
   ]
@@ -227,41 +215,18 @@ resource "khulnasoft_host_runtime_policy" "test" {
   monitor_system_time_changes = true
   monitor_windows_services    = true
 
-  windows_registry_monitoring {
-    monitor_create      = true
-    monitor_read        = true
-    monitor_modify      = true
-    monitor_delete      = true
-    monitor_attributes  = true
-    monitored_paths     = ["paths"]
-    excluded_paths      = ["expaths"]
-    monitored_processes = ["process"]
-    excluded_processes  = ["exprocess"]
-    monitored_users     = ["user"]
-    excluded_users      = ["expuser"]
-  }
-
-  windows_registry_protection {
-    protected_paths     = ["paths"]
-    excluded_paths      = ["expaths"]
-    protected_processes = ["process"]
-    excluded_processes  = ["exprocess"]
-    protected_users     = ["user"]
-    excluded_users      = ["expuser"]
-  }
-
   file_integrity_monitoring {
-    monitor_create      = true
-    monitor_read        = true
-    monitor_modify      = true
-    monitor_delete      = true
-    monitor_attributes  = true
-    monitored_paths     = ["paths"]
-    excluded_paths      = ["expaths"]
-    monitored_processes = ["process"]
-    excluded_processes  = ["exprocess"]
-    monitored_users     = ["user"]
-    excluded_users      = ["expuser"]
+    monitored_files_create                = true
+    monitored_files_read                  = true
+    monitored_files_modify                = true
+    monitored_files_delete                = true
+    monitored_files_attributes            = true
+    monitored_files                       = ["paths"]
+    exceptional_monitored_files           = ["expaths"]
+    monitored_files_processes             = ["process"]
+    exceptional_monitored_files_processes = ["exprocess"]
+    monitored_files_users                 = ["user"]
+    exceptional_monitored_files_users     = ["expuser"]
   }
 }
 
@@ -322,9 +287,8 @@ resource "khulnasoft_permissions_sets" "my_terraform_perm_set" {
   ]
 }
 resource "khulnasoft_host_assurance_policy" "newhap" {
-  name           = "testprovider"
-  assurance_type = "host"
-  description    = "Created using Terraform"
+  name        = "testprovider"
+  description = "Created using Terraform"
   application_scopes = [
     "Global"
   ]
@@ -340,9 +304,8 @@ resource "khulnasoft_host_assurance_policy" "newhap" {
 }
 
 resource "khulnasoft_function_assurance_policy" "newfap" {
-  name           = "testprovider"
-  assurance_type = "function"
-  description    = "Created using Terraform"
+  name        = "testprovider"
+  description = "Created using Terraform"
   application_scopes = [
     "Global"
   ]
