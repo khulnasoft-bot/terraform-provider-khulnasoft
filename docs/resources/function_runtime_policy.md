@@ -13,34 +13,79 @@ description: |-
 ## Example Usage
 
 ```terraform
-resource "khulnasoft_function_runtime_policy" "function_runtime_policy" {
-  name = "function_runtime_policys"
-  description = "function_runtime_policy"
-  scope_variables {
-    attribute = "kubernetes.cluster"
-    value = "default"
-  }
-  scope_variables {
-      attribute = "kubernetes.label"
-      name = "app"
-      value = "khulnasoft"
+# Example: Function Runtime Policy in Audit Mode 
+resource "khulnasoft_function_runtime_policy" "audit_mode_example" {
+  # Basic configuration
+  name        = "function-policy-audit-mode"
+  description = "Function runtime policy in audit mode for serverless functions"
+  version     = "1.0"
+
+  # Scope configuration
+  scope {
+    expression = "v1"
+    variables {
+      attribute = "function.name"
+      value     = "*"
+    }
   }
 
-  application_scopes = [
-    "Global",
-  ]
+  # Application scope
+  application_scopes = ["Global"]
+
+  # Set to Audit mode (not enforcing)
   enabled = true
   enforce = false
-  block_malicious_executables = true
-  block_running_executables_in_tmp_folder = true
-  block_malicious_executables_allowed_processes = [
-    "proc1",
-    "proc2"
-  ]
-  blocked_executables = [
-    "exe1",
-    "exe2",
-  ]
+
+  # Optional: Automatically switch to enforce mode after a period
+  enforce_after_days = 14
+
+  # Honeypot configuration (simplified to just use tripwire block)
+  # tripwire {
+  #   enabled        = true
+  #   user_id        = "example_access_key"
+  #   user_password  = "example_secret_key"
+  #   apply_on       = ["Function"]
+  #   serverless_app = "my-serverless-app" # Must be a real app in your environment
+  # }
+
+  # Block malicious activity
+  executable_blacklist {
+    enabled     = true
+    executables = ["nc", "netcat", "wget", "curl", "bash"]
+  }
+
+  # Drift prevention
+  drift_prevention {
+    enabled                  = true
+    exec_lockdown            = true
+    image_lockdown           = false
+    exec_lockdown_white_list = ["authorized_process"]
+  }
+
+  # Malware scanning
+  malware_scan_options {
+    enabled             = true
+    action              = "Alert"
+    include_directories = ["/var/task", "/opt"]
+    exclude_directories = ["/tmp", "/var/runtime"]
+  }
+
+  # File integrity monitoring
+  file_integrity_monitoring {
+    enabled                    = true
+    monitored_files            = ["/etc/passwd", "/etc/shadow", "/var/task/index.js"]
+    monitored_files_read       = true
+    monitored_files_modify     = true
+    monitored_files_attributes = true
+    monitored_files_create     = true
+    monitored_files_delete     = true
+  }
+
+  # Network security
+  enable_crypto_mining_dns = false
+
+  # Other security settings
+  block_fileless_exec = false
 }
 ```
 
@@ -54,81 +99,38 @@ resource "khulnasoft_function_runtime_policy" "function_runtime_policy" {
 ### Optional
 
 - `allowed_executables` (Block List) Allowed executables configuration. (see [below for nested schema](#nestedblock--allowed_executables))
-- `allowed_registries` (Block List) Allowed registries configuration. (see [below for nested schema](#nestedblock--allowed_registries))
 - `application_scopes` (List of String) Indicates the application scope of the service.
-- `audit_brute_force_login` (Boolean) Detects brute force login attempts
-- `auditing` (Block List, Max: 1) (see [below for nested schema](#nestedblock--auditing))
-- `author` (String) Username of the account that created the service.
-- `blacklisted_os_users` (Block List, Max: 1) (see [below for nested schema](#nestedblock--blacklisted_os_users))
-- `block_container_exec` (Boolean)
-- `block_disallowed_images` (Boolean)
-- `block_fileless_exec` (Boolean)
-- `block_non_compliant_workloads` (Boolean)
-- `block_non_k8s_containers` (Boolean)
-- `bypass_scope` (Block List) Bypass scope configuration. (see [below for nested schema](#nestedblock--bypass_scope))
-- `container_exec` (Block List, Max: 1) (see [below for nested schema](#nestedblock--container_exec))
-- `created` (String)
-- `cve` (String)
-- `default_security_profile` (String)
+- `block_disallowed_images` (Boolean) Block deployment from disallowed images.
+- `block_fileless_exec` (Boolean) Block fileless execution attempts.
+- `block_non_compliant_workloads` (Boolean) Block non-compliant serverless functions.
 - `description` (String) The description of the function runtime policy
-- `digest` (String)
-- `drift_prevention` (Block List) Drift prevention configuration. (see [below for nested schema](#nestedblock--drift_prevention))
-- `enable_crypto_mining_dns` (Boolean)
-- `enable_fork_guard` (Boolean)
-- `enable_ip_reputation` (Boolean)
-- `enable_port_scan_protection` (Boolean)
+- `drift_prevention` (Block List) Drift prevention configuration for functions. (see [below for nested schema](#nestedblock--drift_prevention))
+- `enable_crypto_mining_dns` (Boolean) Enable detection of crypto mining via DNS monitoring
 - `enabled` (Boolean) Indicates if the runtime policy is enabled or not.
-- `enforce` (Boolean) Indicates that policy should effect container execution (not just for audit).
+- `enforce` (Boolean) Indicates that policy should effect function execution (not just for audit).
 - `enforce_after_days` (Number) Indicates the number of days after which the runtime policy will be changed to enforce mode.
-- `enforce_scheduler_added_on` (Number)
 - `exclude_application_scopes` (List of String) List of excluded application scopes.
 - `executable_blacklist` (Block List) Executable blacklist configuration. (see [below for nested schema](#nestedblock--executable_blacklist))
-- `failed_kubernetes_checks` (Block List, Max: 1) (see [below for nested schema](#nestedblock--failed_kubernetes_checks))
-- `file_block` (Block List, Max: 1) (see [below for nested schema](#nestedblock--file_block))
 - `file_integrity_monitoring` (Block List) Configuration for file integrity monitoring. (see [below for nested schema](#nestedblock--file_integrity_monitoring))
-- `fork_guard_process_limit` (Number)
-- `honeypot_access_key` (String) Honeypot User ID (Access Key)
-- `honeypot_apply_on` (List of String) List of options to apply the honeypot on (Environment Vairable, Layer, File)
-- `honeypot_secret_key` (String, Sensitive) Honeypot User Password (Secret Key)
-- `honeypot_serverless_app_name` (String) Serverless application name
-- `image_name` (String)
-- `is_audit_checked` (Boolean)
-- `is_auto_generated` (Boolean)
-- `is_ootb_policy` (Boolean)
-- `lastupdate` (Number)
-- `limit_container_privileges` (Block List) Container privileges configuration. (see [below for nested schema](#nestedblock--limit_container_privileges))
-- `linux_capabilities` (Block List, Max: 1) (see [below for nested schema](#nestedblock--linux_capabilities))
+- `is_audit_checked` (Boolean) Indicates if audit check is enabled
+- `is_auto_generated` (Boolean) Indicates if the policy was auto-generated
+- `is_ootb_policy` (Boolean) Indicates if this is an out-of-the-box policy
 - `malware_scan_options` (Block List, Max: 1) Configuration for Real-Time Malware Protection. (see [below for nested schema](#nestedblock--malware_scan_options))
-- `no_new_privileges` (Boolean)
-- `only_registered_images` (Boolean)
-- `package_block` (Block List, Max: 1) (see [below for nested schema](#nestedblock--package_block))
-- `permission` (String)
-- `port_block` (Block List, Max: 1) (see [below for nested schema](#nestedblock--port_block))
-- `readonly_files` (Block List, Max: 1) (see [below for nested schema](#nestedblock--readonly_files))
-- `readonly_registry` (Block List, Max: 1) (see [below for nested schema](#nestedblock--readonly_registry))
-- `registry` (String)
-- `registry_access_monitoring` (Block List, Max: 1) (see [below for nested schema](#nestedblock--registry_access_monitoring))
-- `repo_name` (String)
-- `resource_name` (String)
-- `resource_type` (String)
-- `restricted_volumes` (Block List) Restricted volumes configuration. (see [below for nested schema](#nestedblock--restricted_volumes))
-- `reverse_shell` (Block List, Max: 1) (see [below for nested schema](#nestedblock--reverse_shell))
-- `runtime_mode` (Number)
-- `runtime_type` (String)
+- `runtime_type` (String) Type of runtime policy
 - `scope` (Block List) Scope configuration. (see [below for nested schema](#nestedblock--scope))
 - `scope_expression` (String) Logical expression of how to compute the dependency of the scope variables.
 - `scope_variables` (Block List) List of scope attributes. (see [below for nested schema](#nestedblock--scope_variables))
-- `system_integrity_protection` (Block List, Max: 1) (see [below for nested schema](#nestedblock--system_integrity_protection))
-- `tripwire` (Block List, Max: 1) (see [below for nested schema](#nestedblock--tripwire))
-- `type` (String)
-- `updated` (String)
-- `version` (String)
-- `vpatch_version` (String)
-- `whitelisted_os_users` (Block List, Max: 1) (see [below for nested schema](#nestedblock--whitelisted_os_users))
+- `tripwire` (Block List, Max: 1) Honeypot/tripwire configuration for detecting unauthorized access. (see [below for nested schema](#nestedblock--tripwire))
+- `type` (String) Policy type identifier
+- `version` (String) Version of the function runtime policy
 
 ### Read-Only
 
+- `author` (String) Username of the account that created the policy
+- `created` (String) Creation timestamp
 - `id` (String) The ID of this resource.
+- `lastupdate` (Number) Internal last update tracker
+- `updated` (String) Last update timestamp
 
 <a id="nestedblock--allowed_executables"></a>
 ### Nested Schema for `allowed_executables`
@@ -139,78 +141,6 @@ Optional:
 - `allow_root_executables` (List of String) List of allowed root executables.
 - `enabled` (Boolean) Whether allowed executables configuration is enabled.
 - `separate_executables` (Boolean) Whether to treat executables separately.
-
-
-<a id="nestedblock--allowed_registries"></a>
-### Nested Schema for `allowed_registries`
-
-Optional:
-
-- `allowed_registries` (List of String) List of allowed registries.
-- `enabled` (Boolean) Whether allowed registries are enabled.
-
-
-<a id="nestedblock--auditing"></a>
-### Nested Schema for `auditing`
-
-Optional:
-
-- `audit_all_network` (Boolean)
-- `audit_all_processes` (Boolean)
-- `audit_failed_login` (Boolean)
-- `audit_os_user_activity` (Boolean)
-- `audit_process_cmdline` (Boolean)
-- `audit_success_login` (Boolean)
-- `audit_user_account_management` (Boolean)
-- `enabled` (Boolean)
-
-
-<a id="nestedblock--blacklisted_os_users"></a>
-### Nested Schema for `blacklisted_os_users`
-
-Optional:
-
-- `enabled` (Boolean)
-- `group_black_list` (List of String)
-- `user_black_list` (List of String)
-
-
-<a id="nestedblock--bypass_scope"></a>
-### Nested Schema for `bypass_scope`
-
-Optional:
-
-- `enabled` (Boolean) Whether bypassing the scope is enabled.
-- `scope` (Block List) Scope configuration. (see [below for nested schema](#nestedblock--bypass_scope--scope))
-
-<a id="nestedblock--bypass_scope--scope"></a>
-### Nested Schema for `bypass_scope.scope`
-
-Optional:
-
-- `expression` (String) Scope expression.
-- `variables` (Block List) List of variables in the scope. (see [below for nested schema](#nestedblock--bypass_scope--scope--variables))
-
-<a id="nestedblock--bypass_scope--scope--variables"></a>
-### Nested Schema for `bypass_scope.scope.variables`
-
-Optional:
-
-- `attribute` (String) Variable attribute.
-- `value` (String) Variable value.
-
-
-
-
-<a id="nestedblock--container_exec"></a>
-### Nested Schema for `container_exec`
-
-Optional:
-
-- `block_container_exec` (Boolean)
-- `container_exec_proc_white_list` (List of String)
-- `enabled` (Boolean)
-- `reverse_shell_ip_white_list` (List of String)
 
 
 <a id="nestedblock--drift_prevention"></a>
@@ -233,29 +163,6 @@ Optional:
 - `executables` (List of String) List of blacklisted executables.
 
 
-<a id="nestedblock--failed_kubernetes_checks"></a>
-### Nested Schema for `failed_kubernetes_checks`
-
-Optional:
-
-- `enabled` (Boolean)
-- `failed_checks` (List of String)
-
-
-<a id="nestedblock--file_block"></a>
-### Nested Schema for `file_block`
-
-Optional:
-
-- `block_files_processes` (List of String)
-- `block_files_users` (List of String)
-- `enabled` (Boolean)
-- `exceptional_block_files` (List of String)
-- `exceptional_block_files_processes` (List of String)
-- `exceptional_block_files_users` (List of String)
-- `filename_block_list` (List of String)
-
-
 <a id="nestedblock--file_integrity_monitoring"></a>
 ### Nested Schema for `file_integrity_monitoring`
 
@@ -275,134 +182,17 @@ Optional:
 - `monitored_files_users` (List of String) List of users associated with monitored files.
 
 
-<a id="nestedblock--limit_container_privileges"></a>
-### Nested Schema for `limit_container_privileges`
-
-Optional:
-
-- `block_add_capabilities` (Boolean) Whether to block adding capabilities.
-- `enabled` (Boolean) Whether container privilege limitations are enabled.
-- `ipcmode` (Boolean) Whether to limit IPC-related capabilities.
-- `netmode` (Boolean) Whether to limit network-related capabilities.
-- `pidmode` (Boolean) Whether to limit process-related capabilities.
-- `prevent_low_port_binding` (Boolean) Whether to prevent low port binding.
-- `prevent_root_user` (Boolean) Whether to prevent the use of the root user.
-- `privileged` (Boolean) Whether the container is run in privileged mode.
-- `use_host_user` (Boolean) Whether to use the host user.
-- `usermode` (Boolean) Whether to limit user-related capabilities.
-- `utsmode` (Boolean) Whether to limit UTS-related capabilities.
-
-
-<a id="nestedblock--linux_capabilities"></a>
-### Nested Schema for `linux_capabilities`
-
-Optional:
-
-- `enabled` (Boolean)
-- `remove_linux_capabilities` (List of String)
-
-
 <a id="nestedblock--malware_scan_options"></a>
 ### Nested Schema for `malware_scan_options`
 
 Optional:
 
 - `action` (String) Set Action, Defaults to 'Alert' when empty
-- `enabled` (Boolean) Defines if enabled or not
-- `exclude_directories` (List of String) List of registry paths to be excluded from being protected.
-- `exclude_processes` (List of String) List of registry processes to be excluded from being protected.
-- `include_directories` (List of String) List of registry paths to be excluded from being protected.
-
-
-<a id="nestedblock--package_block"></a>
-### Nested Schema for `package_block`
-
-Optional:
-
-- `block_packages_processes` (List of String)
-- `block_packages_users` (List of String)
-- `enabled` (Boolean)
-- `exceptional_block_packages_files` (List of String)
-- `exceptional_block_packages_processes` (List of String)
-- `exceptional_block_packages_users` (List of String)
-- `packages_black_list` (List of String)
-
-
-<a id="nestedblock--port_block"></a>
-### Nested Schema for `port_block`
-
-Optional:
-
-- `block_inbound_ports` (List of String)
-- `block_outbound_ports` (List of String)
-- `enabled` (Boolean)
-
-
-<a id="nestedblock--readonly_files"></a>
-### Nested Schema for `readonly_files`
-
-Optional:
-
-- `enabled` (Boolean)
-- `exceptional_readonly_files` (List of String)
-- `exceptional_readonly_files_processes` (List of String)
-- `exceptional_readonly_files_users` (List of String)
-- `readonly_files` (List of String)
-- `readonly_files_processes` (List of String)
-- `readonly_files_users` (List of String)
-
-
-<a id="nestedblock--readonly_registry"></a>
-### Nested Schema for `readonly_registry`
-
-Optional:
-
-- `enabled` (Boolean)
-- `exceptional_readonly_registry_paths` (List of String)
-- `exceptional_readonly_registry_processes` (List of String)
-- `exceptional_readonly_registry_users` (List of String)
-- `readonly_registry_paths` (List of String)
-- `readonly_registry_processes` (List of String)
-- `readonly_registry_users` (List of String)
-
-
-<a id="nestedblock--registry_access_monitoring"></a>
-### Nested Schema for `registry_access_monitoring`
-
-Optional:
-
-- `enabled` (Boolean)
-- `exceptional_monitored_registry_paths` (List of String)
-- `exceptional_monitored_registry_processes` (List of String)
-- `exceptional_monitored_registry_users` (List of String)
-- `monitored_registry_attributes` (Boolean)
-- `monitored_registry_create` (Boolean)
-- `monitored_registry_delete` (Boolean)
-- `monitored_registry_modify` (Boolean)
-- `monitored_registry_paths` (List of String)
-- `monitored_registry_processes` (List of String)
-- `monitored_registry_read` (Boolean)
-- `monitored_registry_users` (List of String)
-
-
-<a id="nestedblock--restricted_volumes"></a>
-### Nested Schema for `restricted_volumes`
-
-Optional:
-
-- `enabled` (Boolean) Whether restricted volumes are enabled.
-- `volumes` (List of String) List of restricted volumes.
-
-
-<a id="nestedblock--reverse_shell"></a>
-### Nested Schema for `reverse_shell`
-
-Optional:
-
-- `block_reverse_shell` (Boolean)
-- `enabled` (Boolean)
-- `reverse_shell_ip_white_list` (List of String)
-- `reverse_shell_proc_white_list` (List of String)
+- `enabled` (Boolean) Defines if malware scanning is enabled or not
+- `exclude_directories` (List of String) List of directories to exclude from scanning.
+- `exclude_processes` (List of String) List of processes to exclude from scanning.
+- `file_forensic_collection` (Boolean) Whether to enable file forensic collection.
+- `include_directories` (List of String) List of directories to include in scanning.
 
 
 <a id="nestedblock--scope"></a>
@@ -421,6 +211,10 @@ Required:
 - `attribute` (String) Variable attribute.
 - `value` (String) Variable value.
 
+Optional:
+
+- `name` (String)
+
 
 
 <a id="nestedblock--scope_variables"></a>
@@ -436,36 +230,15 @@ Optional:
 - `name` (String) Name assigned to the attribute.
 
 
-<a id="nestedblock--system_integrity_protection"></a>
-### Nested Schema for `system_integrity_protection`
-
-Optional:
-
-- `audit_systemtime_change` (Boolean)
-- `enabled` (Boolean)
-- `monitor_audit_log_integrity` (Boolean)
-- `windows_services_monitoring` (Boolean)
-
-
 <a id="nestedblock--tripwire"></a>
 ### Nested Schema for `tripwire`
 
 Optional:
 
-- `apply_on` (List of String)
-- `enabled` (Boolean)
-- `serverless_app` (String)
-- `user_id` (String)
-- `user_password` (String)
-
-
-<a id="nestedblock--whitelisted_os_users"></a>
-### Nested Schema for `whitelisted_os_users`
-
-Optional:
-
-- `enabled` (Boolean)
-- `group_white_list` (List of String)
-- `user_white_list` (List of String)
+- `apply_on` (List of String) List of options to apply the honeypot on (Environment Variable, Layer, File)
+- `enabled` (Boolean) Whether the honeypot is enabled.
+- `serverless_app` (String) Serverless application name
+- `user_id` (String) Honeypot User ID (Access Key)
+- `user_password` (String, Sensitive) Honeypot User Password (Secret Key)
 
 
