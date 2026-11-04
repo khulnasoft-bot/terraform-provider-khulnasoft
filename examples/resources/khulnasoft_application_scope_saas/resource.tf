@@ -1,0 +1,48 @@
+resource "khulnasoft_application_scope_saas" "terraformiap" {
+  description = "khulnasoft application scope saas"
+  name        = "khulnasoft_application_scope_saas"
+  // Categories is a nested block of artifacts, workloads and infrastructure
+  categories {
+    // Artifacts is a nested block of Image, Function, CF
+    artifacts {
+      // Every object requires expression(logical combinations of variables v1, v2, v3...) and list of variables consists of attribute(pre-defined) and value
+      image {
+        expression = "v1 && v2"
+        variables {
+          attribute = "khulnasoft.registry"
+          value     = "test-registry"
+        }
+        variables {
+          attribute = "image.repo"
+          value     = "nginx"
+        }
+      }
+    }
+    // Workloads is a nested block of Kubernetes, OS, CF
+    workloads {
+      // Every object requires expression(logical combinations of variables v1, v2, v3...) and list of variables consists of attribute(pre-defined) and value
+      kubernetes {
+        expression = "v1 && v2"
+        variables {
+          attribute = "kubernetes.cluster"
+          value     = "khulnasoft"
+        }
+        variables {
+          attribute = "kubernetes.namespace"
+          value     = "khulnasoft"
+        }
+      }
+    }
+    // Infrastructure is a nested block of Kubernetes, OS
+    infrastructure {
+      // Every object requires expression and list of variables consists of attribute(pre-defined) and value
+      kubernetes {
+        expression = "v1"
+        variables {
+          attribute = "kubernetes.cluster"
+          value     = "khulnasoft"
+        }
+      }
+    }
+  }
+}
