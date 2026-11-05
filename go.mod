@@ -1,6 +1,6 @@
 module github.com/khulnasoft/terraform-provider-khulnasoft
 
-go 1.23.0
+go 1.18
 
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.13.0
