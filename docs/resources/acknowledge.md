@@ -97,3 +97,4 @@ Read-Only:
 - `expiration_configured_by` (String) The user who set the expiration of the issue.
 - `permission` (String) The permissions of the user who acknowledged the issue.
 
+

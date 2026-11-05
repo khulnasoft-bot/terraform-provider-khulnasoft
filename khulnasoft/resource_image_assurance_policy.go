@@ -1,20 +1,22 @@
 package khulnasoft
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceImageAssurancePolicy() *schema.Resource {
 	return &schema.Resource{
-		Description: "Khulnasoft Image Assurance covers the first part of the container lifecycle: image development. The Image Assurance subsystem detects, assesses, and reports security issues in your images.",
-		Create:      resourceImageAssurancePolicyCreate,
-		Read:        resourceImageAssurancePolicyRead,
-		Update:      resourceImageAssurancePolicyUpdate,
-		Delete:      resourceImageAssurancePolicyDelete,
+		Description:   "Khulnasoft Image Assurance covers the first part of the container lifecycle: image development. The Image Assurance subsystem detects, assesses, and reports security issues in your images.",
+		CreateContext: resourceImageAssurancePolicyCreate,
+		ReadContext:   resourceImageAssurancePolicyRead,
+		UpdateContext: resourceImageAssurancePolicyUpdate,
+		DeleteContext: resourceImageAssurancePolicyDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -23,10 +25,19 @@ func resourceImageAssurancePolicy() *schema.Resource {
 			"assurance_type": {
 				Type:        schema.TypeString,
 				Description: "What type of assurance policy is described.",
-				Optional:    true,
-				Computed:    true,
+				Required:    true,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					s, ok := val.(string)
+					if !ok {
+						errs = append(errs, fmt.Errorf("%q must be a string, got %T", key, val))
+						return
+					}
+					if strings.ToLower(s) != "image" {
+						errs = append(errs, fmt.Errorf("%q must be \"image\" (case-insensitive), got %q", key, s))
+					}
+					return
+				},
 			},
-
 			"id": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -58,9 +69,10 @@ func resourceImageAssurancePolicy() *schema.Resource {
 				Optional:    true,
 			},
 			"cvss_severity_exclude_no_fix": {
-				Type:        schema.TypeBool,
-				Description: "Indicates that policy should ignore cvss cases that do not have a known fix.",
-				Optional:    true,
+				Type:             schema.TypeBool,
+				Description:      "Indicates that policy should ignore cvss cases that do not have a known fix.",
+				Optional:         true,
+				DiffSuppressFunc: suppressExcludeNoFixDiff("cvss_severity_enabled"),
 			},
 			"custom_severity_enabled": {
 				Type:     schema.TypeBool,
@@ -78,6 +90,10 @@ func resourceImageAssurancePolicy() *schema.Resource {
 			},
 			"control_exclude_no_fix": {
 				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"category": {
+				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"custom_checks_enabled": {
@@ -234,11 +250,79 @@ func resourceImageAssurancePolicy() *schema.Resource {
 				},
 			},
 			"scap_files": {
-				Type:        schema.TypeList,
-				Description: "List of SCAP user scripts for checks.",
-				Optional:    true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"path": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"description": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"engine": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"kind": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"type": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"severity": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"snippet": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"script_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"custom": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"readonly": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"overwrite": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"author": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"avd_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"recommended_actions": {
+							Type: schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional: true,
+						},
+						"last_modified": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+					},
 				},
 			},
 			"scope": {
@@ -400,11 +484,51 @@ func resourceImageAssurancePolicy() *schema.Resource {
 				},
 			},
 			"allowed_images": {
-				Type:        schema.TypeList,
-				Description: "List of explicitly allowed images.",
-				Optional:    true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"imagename": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"registry": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"imageid": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"imagedigest": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"blacklisted": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+						"author": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"lastupdated": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"reason": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"whitelisted": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
 				},
 			},
 			"trusted_base_images": {
@@ -500,6 +624,15 @@ func resourceImageAssurancePolicy() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 				Optional: true,
+			},
+			"ignore_recently_published_fix_vln": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"ignore_recently_published_fix_vln_period": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
 			},
 			"ignore_risk_resources_enabled": {
 				Type:        schema.TypeBool,
@@ -630,9 +763,10 @@ func resourceImageAssurancePolicy() *schema.Resource {
 				Optional: true,
 			},
 			"maximum_score_exclude_no_fix": {
-				Type:        schema.TypeBool,
-				Description: "",
-				Optional:    true,
+				Type:             schema.TypeBool,
+				Description:      "",
+				Optional:         true,
+				DiffSuppressFunc: suppressExcludeNoFixDiff("maximum_score_enabled"),
 			},
 			//JSON
 			"lastupdate": {
@@ -818,37 +952,62 @@ func resourceImageAssurancePolicy() *schema.Resource {
 				},
 			}, // list
 			"aggregated_vulnerability": {
-				Type:        schema.TypeMap,
+				Type:        schema.TypeList,
 				Description: "Aggregated vulnerability information.",
 				Optional:    true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": {
+							Type:        schema.TypeBool,
+							Description: "Enable the aggregated vulnerability",
+							Optional:    true,
+						},
+						"score_range": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MinItems: 1,
+							Elem: &schema.Schema{
+								Type: schema.TypeFloat,
+							},
+							Description: "Indicates score range for vuln score eg [5.5, 6.0]",
+						},
+						"custom_severity_enabled": {
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Description: "Indicates to consider custom severity during control evaluation",
+						},
+						"severity": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "Max severity to be allowed in the image",
+						},
+					},
 				},
 			},
 		},
 	}
 }
 
-func resourceImageAssurancePolicyCreate(d *schema.ResourceData, m interface{}) error {
+func resourceImageAssurancePolicyCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := "image"
+	assurance_type := d.Get("assurance_type").(string)
 
 	iap := expandAssurancePolicy(d, assurance_type)
 	err := ac.CreateAssurancePolicy(iap, assurance_type)
 
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	d.SetId(name)
-	return resourceImageAssurancePolicyRead(d, m)
+	return resourceImageAssurancePolicyRead(ctx, d, m)
 
 }
 
-func resourceImageAssurancePolicyUpdate(d *schema.ResourceData, m interface{}) error {
+func resourceImageAssurancePolicyUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := "image"
+	assurance_type := d.Get("assurance_type").(string)
 
 	if d.HasChanges("description",
 		"registry",
@@ -859,6 +1018,7 @@ func resourceImageAssurancePolicyUpdate(d *schema.ResourceData, m interface{}) e
 		"maximum_score_enabled",
 		"maximum_score",
 		"control_exclude_no_fix",
+		"category",
 		"custom_checks_enabled",
 		"scap_enabled",
 		"cves_black_list_enabled",
@@ -904,6 +1064,8 @@ func resourceImageAssurancePolicyUpdate(d *schema.ResourceData, m interface{}) e
 		"enforce_after_days",
 		"ignore_recently_published_vln",
 		"ignore_recently_published_vln_period",
+		"ignore_recently_published_fix_vln",
+		"ignore_recently_published_fix_vln_period",
 		"ignore_risk_resources_enabled",
 		"ignored_risk_resources",
 		"application_scopes",
@@ -940,26 +1102,27 @@ func resourceImageAssurancePolicyUpdate(d *schema.ResourceData, m interface{}) e
 		"exclude_application_scopes",
 		"linux_cis_enabled",
 		"openshift_hardening_enabled",
+		"aggregated_vulnerability",
 	) {
 		iap := expandAssurancePolicy(d, assurance_type)
 		err := ac.UpdateAssurancePolicy(iap, assurance_type)
 		if err == nil {
-			err1 := resourceImageAssurancePolicyRead(d, m)
+			err1 := resourceImageAssurancePolicyRead(ctx, d, m)
 			if err1 == nil {
 				d.SetId(name)
 			} else {
 				return err1
 			}
 		} else {
-			return err
+			return diag.FromErr(err)
 		}
 	}
 	return nil
 }
 
-func resourceImageAssurancePolicyRead(d *schema.ResourceData, m interface{}) error {
+func resourceImageAssurancePolicyRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
-	assurance_type := "image"
+	assurance_type := d.Get("assurance_type").(string)
 
 	iap, err := ac.GetAssurancePolicy(d.Id(), assurance_type)
 
@@ -968,7 +1131,7 @@ func resourceImageAssurancePolicyRead(d *schema.ResourceData, m interface{}) err
 			d.SetId("")
 			return nil
 		}
-		return err
+		return diag.FromErr(err)
 	}
 
 	d.Set("assurance_type", iap.AssuranceType)
@@ -984,6 +1147,7 @@ func resourceImageAssurancePolicyRead(d *schema.ResourceData, m interface{}) err
 	d.Set("maximum_score_enabled", iap.MaximumScoreEnabled)
 	d.Set("maximum_score", iap.MaximumScore)
 	d.Set("control_exclude_no_fix", iap.ControlExcludeNoFix)
+	d.Set("category", iap.Category)
 	d.Set("custom_checks_enabled", iap.CustomChecksEnabled)
 	d.Set("scap_enabled", iap.ScapEnabled)
 	d.Set("cves_black_list_enabled", iap.CvesBlackListEnabled)
@@ -1003,7 +1167,7 @@ func resourceImageAssurancePolicyRead(d *schema.ResourceData, m interface{}) err
 	d.Set("whitelisted_licenses_enabled", iap.WhitelistedLicensesEnabled)
 	d.Set("whitelisted_licenses", iap.WhitelistedLicenses)
 	d.Set("custom_checks", flattenCustomChecks(iap.CustomChecks))
-	d.Set("scap_files", iap.ScapFiles)
+	d.Set("scap_files", flattenScapFiles(iap.ScapFiles))
 	d.Set("scope", flatteniapscope(iap.Scope))
 	d.Set("registries", iap.Registries)
 	d.Set("labels", iap.Labels)
@@ -1011,7 +1175,10 @@ func resourceImageAssurancePolicyRead(d *schema.ResourceData, m interface{}) err
 	d.Set("cves_black_list", iap.CvesBlackList)
 	d.Set("packages_black_list", flattenPackages(iap.PackagesBlackList))
 	d.Set("packages_white_list", flattenPackages(iap.PackagesWhiteList))
-	d.Set("allowed_images", iap.AllowedImages)
+	err = d.Set("allowed_images", flattenAllowedImages(iap.AllowedImages))
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	d.Set("trusted_base_images", flattenTrustedBaseImages(iap.TrustedBaseImages))
 	d.Set("read_only", iap.ReadOnly)
 	d.Set("force_microenforcer", iap.ForceMicroenforcer)
@@ -1029,6 +1196,8 @@ func resourceImageAssurancePolicyRead(d *schema.ResourceData, m interface{}) err
 	d.Set("enforce_after_days", iap.EnforceAfterDays)
 	d.Set("ignore_recently_published_vln", iap.IgnoreRecentlyPublishedVln)
 	d.Set("ignore_recently_published_vln_period", iap.IgnoreRecentlyPublishedVlnPeriod)
+	d.Set("ignore_recently_published_fix_vln", iap.IgnoreRecentlyPublishedFixVln)
+	d.Set("ignore_recently_published_fix_vln_period", iap.IgnoreRecentlyPublishedFixVlnPeriod)
 	d.Set("ignore_risk_resources_enabled", iap.IgnoreRiskResourcesEnabled)
 	d.Set("ignored_risk_resources", iap.IgnoredRiskResources)
 	d.Set("application_scopes", iap.ApplicationScopes)
@@ -1063,20 +1232,23 @@ func resourceImageAssurancePolicyRead(d *schema.ResourceData, m interface{}) err
 	d.Set("exclude_application_scopes", iap.ExcludeApplicationScopes)
 	d.Set("linux_cis_enabled", iap.LinuxCisEnabled)
 	d.Set("openshift_hardening_enabled", iap.OpenshiftHardeningEnabled)
-
+	if _, ok := d.GetOk("aggregated_vulnerability"); ok {
+		d.Set("aggregated_vulnerability", flattenAggregatedVulnerability(iap.AggregatedVulnerability))
+	}
 	return nil
 }
 
-func resourceImageAssurancePolicyDelete(d *schema.ResourceData, m interface{}) error {
+func resourceImageAssurancePolicyDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := "image"
+	assurance_type := d.Get("assurance_type").(string)
+
 	err := ac.DeleteAssurancePolicy(name, assurance_type)
 
 	if err == nil {
 		d.SetId("")
 	} else {
-		return err
+		return diag.FromErr(err)
 	}
 	return nil
 }
@@ -1133,6 +1305,39 @@ func flattenCustomChecks(checks []client.Checks) []map[string]interface{} {
 	return check
 }
 
+func flattenScapFiles(scapFiles []client.ScapFiles) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(scapFiles))
+	for i, scap := range scapFiles {
+		result[i] = map[string]interface{}{
+			"name":                scap.Name,
+			"path":                scap.Path,
+			"description":         scap.Description,
+			"engine":              scap.Engine,
+			"kind":                scap.Kind,
+			"type":                scap.Type,
+			"severity":            scap.Severity,
+			"snippet":             scap.Snippet,
+			"script_id":           scap.ScriptID,
+			"custom":              scap.Custom,
+			"readonly":            scap.ReadOnly,
+			"overwrite":           scap.Overwrite,
+			"author":              scap.Author,
+			"avd_id":              scap.AvdID,
+			"last_modified":       scap.LastModified,
+			"recommended_actions": flattenStringList(scap.RecommendedActions),
+		}
+	}
+	return result
+}
+
+func flattenStringList(input []string) []interface{} {
+	result := make([]interface{}, len(input))
+	for i, v := range input {
+		result[i] = v
+	}
+	return result
+}
+
 func flattenLabels(labels []client.Labels) []map[string]interface{} {
 	label := make([]map[string]interface{}, len(labels))
 	for i := range labels {
@@ -1166,11 +1371,33 @@ func flattenTrustedBaseImages(TrustedBaseImages []client.BaseImagesTrusted) []ma
 	tbi := make([]map[string]interface{}, len(TrustedBaseImages))
 	for i, v := range TrustedBaseImages {
 		tbi[i] = map[string]interface{}{
-			"registry":  v.Registry,
-			"imagename": v.Imagename,
+			"registry":    v.Registry,
+			"imagename":   v.Imagename,
+			"lastupdated": v.LastUpdated,
+			"imageid":     v.ImageID,
+			"imagedigest": v.ImageDigest,
+			"author":      v.Author,
 		}
 	}
 	return tbi
+}
+
+func flattenAllowedImages(images []client.ExplicitlyAllowedImage) []map[string]interface{} {
+	allowedImage := make([]map[string]interface{}, len(images))
+	for i, img := range images {
+		allowedImage[i] = map[string]interface{}{
+			"imagename":   img.ImageName,
+			"registry":    img.Registry,
+			"author":      img.Author,
+			"imagedigest": img.ImageDigest,
+			"imageid":     img.ImageID,
+			"blacklisted": img.Blacklisted,
+			"lastupdated": img.LastUpdated,
+			"reason":      img.Reason,
+			"whitelisted": img.Whitelisted,
+		}
+	}
+	return allowedImage
 }
 
 func flattenPolicySettings(policySettings client.PolicySettings) []map[string]interface{} {
@@ -1204,6 +1431,24 @@ func flattenKubernetesControls(kubernetesControls client.KubernetesControlsArray
 	return flattenedControls
 }
 
+func flattenAggregatedVulnerability(agg client.AggregatedVulnerability) []map[string]interface{} {
+	block := map[string]interface{}{
+		"enabled":                 agg.Enabled,
+		"custom_severity_enabled": agg.CustomSeverityEnabled,
+	}
+	if len(agg.ScoreRange) > 0 {
+		sr := make([]interface{}, len(agg.ScoreRange))
+		for i, v := range agg.ScoreRange {
+			sr[i] = float64(v)
+		}
+		block["score_range"] = sr
+	}
+	if agg.Severity != "" {
+		block["severity"] = agg.Severity
+	}
+	return []map[string]interface{}{block}
+}
+
 func setVulnerabilityScore(vulnerabilityScoreRange []int) []int {
 	if len(vulnerabilityScoreRange) == 0 {
 		return []int{0, 10}
@@ -1214,11 +1459,9 @@ func setVulnerabilityScore(vulnerabilityScoreRange []int) []int {
 func expandAssurancePolicy(d *schema.ResourceData, a_type string) *client.AssurancePolicy {
 	app_scopes := d.Get("application_scopes").([]interface{})
 	assurance_type := d.Get("assurance_type").(string)
-	if assurance_type == "" {
-		assurance_type = a_type
-	}
+
 	iap := client.AssurancePolicy{
-		AssuranceType:     a_type,
+		AssuranceType:     assurance_type,
 		Name:              d.Get("name").(string),
 		ApplicationScopes: convertStringArr(app_scopes),
 	}
@@ -1286,6 +1529,11 @@ func expandAssurancePolicy(d *schema.ResourceData, a_type string) *client.Assura
 	control_exclude_no_fix, ok := d.GetOk("control_exclude_no_fix")
 	if ok {
 		iap.ControlExcludeNoFix = control_exclude_no_fix.(bool)
+	}
+
+	category, ok := d.GetOk("category")
+	if ok {
+		iap.Category = category.(string)
 	}
 
 	custom_checks_enabled, ok := d.GetOk("custom_checks_enabled")
@@ -1390,7 +1638,39 @@ func expandAssurancePolicy(d *schema.ResourceData, a_type string) *client.Assura
 
 	scap_files, ok := d.GetOk("scap_files")
 	if ok {
-		iap.ScapFiles = scap_files.([]interface{})
+		scapList := scap_files.([]interface{})
+		scapArr := make([]client.ScapFiles, len(scapList))
+		for i, item := range scapList {
+			scapMap := item.(map[string]interface{})
+			scap := client.ScapFiles{
+				Name:         scapMap["name"].(string),
+				Path:         scapMap["path"].(string),
+				Description:  scapMap["description"].(string),
+				Engine:       scapMap["engine"].(string),
+				Kind:         scapMap["kind"].(string),
+				Type:         scapMap["type"].(string),
+				Severity:     scapMap["severity"].(string),
+				Snippet:      scapMap["snippet"].(string),
+				ScriptID:     scapMap["script_id"].(string),
+				Custom:       scapMap["custom"].(string),
+				ReadOnly:     scapMap["readonly"].(bool),
+				Overwrite:    scapMap["overwrite"].(bool),
+				Author:       scapMap["author"].(string),
+				AvdID:        scapMap["avd_id"].(string),
+				LastModified: scapMap["last_modified"].(int),
+			}
+
+			if v, ok := scapMap["recommended_actions"]; ok {
+				recommended := []string{}
+				for _, val := range v.([]interface{}) {
+					recommended = append(recommended, val.(string))
+				}
+				scap.RecommendedActions = recommended
+			}
+
+			scapArr[i] = scap
+		}
+		iap.ScapFiles = scapArr
 	}
 
 	scope, ok := d.GetOk("scope")
@@ -1487,7 +1767,32 @@ func expandAssurancePolicy(d *schema.ResourceData, a_type string) *client.Assura
 
 	allowed_images, ok := d.GetOk("allowed_images")
 	if ok {
-		iap.AllowedImages = allowed_images.([]interface{})
+		allowedImagesList := allowed_images.([]interface{})
+		allowedImages := make([]client.ExplicitlyAllowedImage, len(allowedImagesList))
+		for i, item := range allowedImagesList {
+			data := item.(map[string]interface{})
+			var reasons []string
+			if rawReasons, ok := data["reason"].([]interface{}); ok {
+				reasons = make([]string, len(rawReasons))
+				for i, r := range rawReasons {
+					reasons[i] = r.(string)
+				}
+			}
+			image := client.ExplicitlyAllowedImage{
+				ImageName:   data["imagename"].(string),
+				Registry:    data["registry"].(string),
+				Author:      data["author"].(string),
+				Blacklisted: data["blacklisted"].(bool),
+				ImageDigest: data["imagedigest"].(string),
+				ImageID:     data["imageid"].(int),
+				LastUpdated: data["lastupdated"].(int),
+				Reason:      reasons,
+				Whitelisted: data["whitelisted"].(bool),
+			}
+
+			allowedImages[i] = image
+		}
+		iap.AllowedImages = allowedImages
 	}
 
 	trusted_base_images, ok := d.GetOk("trusted_base_images")
@@ -1554,7 +1859,7 @@ func expandAssurancePolicy(d *schema.ResourceData, a_type string) *client.Assura
 	kubernetes_controls_names, ok := d.GetOk("kubernetes_controls_names")
 	if ok {
 		strArr := convertStringArr(kubernetes_controls_names.([]interface{}))
-		iap.KubenetesControlsNames = strArr
+		iap.KubernetesControlsNames = strArr
 	}
 	blacklist_permissions_enabled, ok := d.GetOk("blacklist_permissions_enabled")
 	if ok {
@@ -1589,6 +1894,16 @@ func expandAssurancePolicy(d *schema.ResourceData, a_type string) *client.Assura
 	ignore_recently_published_vln_period, ok := d.GetOk("ignore_recently_published_vln_period")
 	if ok {
 		iap.IgnoreRecentlyPublishedVlnPeriod = ignore_recently_published_vln_period.(int)
+	}
+
+	ignore_recently_published_fix_vln, ok := d.GetOk("ignore_recently_published_fix_vln")
+	if ok {
+		iap.IgnoreRecentlyPublishedFixVln = ignore_recently_published_fix_vln.(bool)
+	}
+
+	ignore_recently_published_fix_vln_period, ok := d.GetOk("ignore_recently_published_fix_vln_period")
+	if ok {
+		iap.IgnoreRecentlyPublishedFixVlnPeriod = ignore_recently_published_fix_vln_period.(int)
 	}
 
 	ignore_risk_resources_enabled, ok := d.GetOk("ignore_risk_resources_enabled")
@@ -1789,6 +2104,34 @@ func expandAssurancePolicy(d *schema.ResourceData, a_type string) *client.Assura
 			Warn:           v["warn"].(bool),
 			WarningMessage: v["warning_message"].(string),
 			IsAuditChecked: v["is_audit_checked"].(bool),
+		}
+	}
+
+	iap.AggregatedVulnerability = client.AggregatedVulnerability{}
+	aggregated_vulnerability, ok := d.GetOk("aggregated_vulnerability")
+	if ok {
+		list := aggregated_vulnerability.([]interface{})
+		if len(list) > 0 {
+			v := list[0].(map[string]interface{})
+			var sr []float32
+			if arrIface, exists := v["score_range"].([]interface{}); exists {
+				sr = make([]float32, len(arrIface))
+				for i, iv := range arrIface {
+					if fv, ok := iv.(float64); ok {
+						sr[i] = float32(fv)
+					}
+				}
+			}
+			enabled, _ := v["enabled"].(bool)
+			customEnabled, _ := v["custom_severity_enabled"].(bool)
+			severity, _ := v["severity"].(string)
+
+			iap.AggregatedVulnerability = client.AggregatedVulnerability{
+				Enabled:               enabled,
+				ScoreRange:            sr,
+				CustomSeverityEnabled: customEnabled,
+				Severity:              severity,
+			}
 		}
 	}
 

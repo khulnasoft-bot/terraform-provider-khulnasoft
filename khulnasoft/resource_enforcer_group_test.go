@@ -20,9 +20,11 @@ func TestKhulnasoftEnforcerGroupResource(t *testing.T) {
 		Gateways: []string{
 			"3ef9a43f2693_gateway",
 		},
-		Type:              "agent",
-		EnforcerImageName: "registry.khulnasoft.com/enforcer:6.5.22034",
-		Orchestrator:      client.EnforcerOrchestrator{},
+		Type:                 "agent",
+		EnforcerImageName:    "registry.khulnasoft.com/enforcer:6.5.22034",
+		Orchestrator:         client.EnforcerOrchestrator{},
+		ScheduleScanSettings: client.EnforcerScheduleScanSettings{},
+		UnifiedMode:          false,
 	}
 
 	rootRef := enforcerGroupsRef(basicEnforcerGroup.ID)
@@ -43,6 +45,31 @@ func TestKhulnasoftEnforcerGroupResource(t *testing.T) {
 					resource.TestCheckResourceAttr(rootRef, "enforce", fmt.Sprintf("%v", basicEnforcerGroup.Enforce)),
 					resource.TestCheckResourceAttr(rootRef, "gateways.0", basicEnforcerGroup.Gateways[0]),
 					resource.TestCheckResourceAttr(rootRef, "type", basicEnforcerGroup.Type),
+					resource.TestCheckResourceAttr(rootRef, "unified_mode", "false"),
+				),
+			},
+			{
+				Config: getBasicEnforcerGroupResourceWithScheduleScanSettings(basicEnforcerGroup),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(rootRef, "group_id", basicEnforcerGroup.ID),
+					resource.TestCheckResourceAttr(rootRef, "description", basicEnforcerGroup.Description),
+					resource.TestCheckResourceAttr(rootRef, "logical_name", basicEnforcerGroup.LogicalName),
+					resource.TestCheckResourceAttr(rootRef, "enforce", fmt.Sprintf("%v", basicEnforcerGroup.Enforce)),
+					resource.TestCheckResourceAttr(rootRef, "gateways.0", basicEnforcerGroup.Gateways[0]),
+					resource.TestCheckResourceAttr(rootRef, "type", basicEnforcerGroup.Type),
+					resource.TestCheckResourceAttr(rootRef, "unified_mode", "false"),
+				),
+			},
+			{
+				Config: getBasicEnforcerGroupResource(basicEnforcerGroup),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr(rootRef, "group_id", basicEnforcerGroup.ID),
+					resource.TestCheckResourceAttr(rootRef, "description", basicEnforcerGroup.Description),
+					resource.TestCheckResourceAttr(rootRef, "logical_name", basicEnforcerGroup.LogicalName),
+					resource.TestCheckResourceAttr(rootRef, "enforce", fmt.Sprintf("%v", basicEnforcerGroup.Enforce)),
+					resource.TestCheckResourceAttr(rootRef, "gateways.0", basicEnforcerGroup.Gateways[0]),
+					resource.TestCheckResourceAttr(rootRef, "type", basicEnforcerGroup.Type),
+					resource.TestCheckResourceAttr(rootRef, "unified_mode", "false"),
 				),
 			},
 			{
@@ -69,6 +96,7 @@ func getBasicEnforcerGroupResource(enforcerGroup client.EnforcerGroup) string {
 			namespace = "%s"
 			master = "%v"
 		}
+		unified_mode = %v
 	}
 	`, enforcerGroup.ID,
 		enforcerGroup.ID,
@@ -81,6 +109,45 @@ func getBasicEnforcerGroupResource(enforcerGroup client.EnforcerGroup) string {
 		enforcerGroup.Orchestrator.ServiceAccount,
 		enforcerGroup.Orchestrator.Namespace,
 		enforcerGroup.Orchestrator.Master,
+		enforcerGroup.UnifiedMode,
+	)
+}
+
+func getBasicEnforcerGroupResourceWithScheduleScanSettings(enforcerGroup client.EnforcerGroup) string {
+	return fmt.Sprintf(`
+	resource "khulnasoft_enforcer_groups" "%s" {
+		group_id = "%s"
+		description = "%s"
+		logical_name = "%s"
+		enforce = "%v"
+		gateways = ["%s"]
+		type = "%s"
+		orchestrator {
+			type = "%s"
+            service_account = "%s"
+			namespace = "%s"
+			master = "%v"
+		}
+		schedule_scan_settings {
+			disabled  = false
+			is_custom = true
+			days      = [0,1,2,3,4,5,6]
+			time      = [4,0]
+		}
+		unified_mode = %v
+	}
+	`, enforcerGroup.ID,
+		enforcerGroup.ID,
+		enforcerGroup.Description,
+		enforcerGroup.LogicalName,
+		enforcerGroup.Enforce,
+		enforcerGroup.Gateways[0],
+		enforcerGroup.Type,
+		enforcerGroup.Orchestrator.Type,
+		enforcerGroup.Orchestrator.ServiceAccount,
+		enforcerGroup.Orchestrator.Namespace,
+		enforcerGroup.Orchestrator.Master,
+		enforcerGroup.UnifiedMode,
 	)
 }
 

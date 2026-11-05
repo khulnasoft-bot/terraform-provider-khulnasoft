@@ -28,14 +28,14 @@ func TestKhulnasoftUsersSaasManagement(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				// Config returns the test resource
-				Config: testAccCheckKhulnasoftUsersSaas(email, groups, true, false),
+				Config: testAccCheckKhulnasoftUsersSaas(email, groups, false, false),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKhulnasoftUsersSaassExists("khulnasoft_user_saas.new"),
 				),
 			},
 			{
 				// Config returns the test resource
-				Config: testAccCheckKhulnasoftUsersSaas1(email, newGroups, true, false),
+				Config: testAccCheckKhulnasoftUsersSaas1(email, newGroups, false, false),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKhulnasoftUsersSaassExists("khulnasoft_user_saas.new"),
 				),
@@ -50,7 +50,7 @@ func TestKhulnasoftUsersSaasManagement(t *testing.T) {
 	})
 }
 
-func testAccCheckKhulnasoftUsersSaas(email, groups string, groupAdmin, accountAdmin bool) string {
+func testAccCheckKhulnasoftUsersSaas(email, groups string, accountAdmin, mfaEnabled bool) string {
 	return fmt.Sprintf(`
 
 	resource "khulnasoft_group" "new" {
@@ -62,14 +62,14 @@ func testAccCheckKhulnasoftUsersSaas(email, groups string, groupAdmin, accountAd
 		csp_roles = []
 		groups {
 			name = "%s"
-			group_admin = %v
 		}
 		account_admin = %v
+		mfa_enabled   = %v
 		depends_on = ["khulnasoft_group.new"]
-	  }`, groups, email, groups, groupAdmin, accountAdmin)
+	  }`, groups, email, groups, accountAdmin, mfaEnabled)
 }
 
-func testAccCheckKhulnasoftUsersSaas1(email, groups string, groupAdmin, accountAdmin bool) string {
+func testAccCheckKhulnasoftUsersSaas1(email, groups string, accountAdmin, mfaEnabled bool) string {
 	return fmt.Sprintf(`
 
 	resource "khulnasoft_group" "new" {
@@ -81,11 +81,11 @@ func testAccCheckKhulnasoftUsersSaas1(email, groups string, groupAdmin, accountA
 		csp_roles = []
 		groups {
 			name = "%s"
-			group_admin = %v
 		}
 		account_admin = %v
+		mfa_enabled = %v
 		depends_on = ["khulnasoft_group.new"]
-	  }`, groups, email, groups, groupAdmin, accountAdmin)
+	  }`, groups, email, groups, accountAdmin, mfaEnabled)
 }
 
 func testAccCheckKhulnasoftUsersSaassExists(n string) resource.TestCheckFunc {

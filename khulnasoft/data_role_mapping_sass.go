@@ -60,6 +60,7 @@ func dataRolesMappingSaasRead(ctx context.Context, d *schema.ResourceData, m int
 	} else {
 		return diag.FromErr(err)
 	}
+	d.SetId("khulnasoft_roles_mapping_saas_list")
 	return nil
 }
 

@@ -86,7 +86,7 @@ func TestResourceKhulnasoftComplexHostRuntimePolicyCreate(t *testing.T) {
 					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.monitored_files_read", "true"),
 					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.monitored_files_modify", "true"),
 					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.monitored_files_delete", "true"),
-					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.monitored_files_attributes", "true"),
+					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.monitored_files_attributes", "false"),
 					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.monitored_files.#", "1"),
 					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.exceptional_monitored_files.#", "1"),
 					resource.TestCheckResourceAttr(rootRef, "file_integrity_monitoring.0.monitored_files_processes.#", "1"),
@@ -103,6 +103,11 @@ func TestResourceKhulnasoftComplexHostRuntimePolicyCreate(t *testing.T) {
 					//resource.TestCheckResourceAttr(rootRef, "monitor_system_time_changes", "true"),
 					//resource.TestCheckResourceAttr(rootRef, "monitor_windows_services", "true"),
 					resource.TestCheckResourceAttr(rootRef, "monitor_system_log_integrity", "true"),
+
+					// Malware scan options
+					resource.TestCheckResourceAttr(rootRef, "malware_scan_options.0.enabled", "true"),
+					resource.TestCheckResourceAttr(rootRef, "malware_scan_options.0.action", "alert"),
+					resource.TestCheckResourceAttr(rootRef, "malware_scan_options.0.file_forensic_collection", "true"),
 				),
 			},
 		},
@@ -141,7 +146,7 @@ func getComplexHostRuntimePolicyResource(policy client.RuntimePolicy) string {
 		monitored_files_read                   = true
 		monitored_files_modify                 = true
 		monitored_files_delete                 = true
-		monitored_files_attributes             = true
+		monitored_files_attributes             = false
 		monitored_files                        = ["paths"]
 		exceptional_monitored_files            = ["expaths"]
 		monitored_files_processes              = ["process"]
@@ -154,8 +159,16 @@ func getComplexHostRuntimePolicyResource(policy client.RuntimePolicy) string {
 		audit_user_account_management = true
 		audit_success_login = true
 	  }
+	  malware_scan_options {
+		enabled = true
+		action = "alert"
+		file_forensic_collection = true
+		exclude_directories = []
+		include_directories = ["%%SystemDrive%%\\*", "%%AllDrives%%\\*", "/*"]
+		exclude_processes = ["systemd"]
+	  }
 	  enable_ip_reputation = true
-	  enable_port_scan_protection     = true
+	  enable_port_scan_protection      = true
 	  monitor_system_log_integrity     = true
 }
 `,

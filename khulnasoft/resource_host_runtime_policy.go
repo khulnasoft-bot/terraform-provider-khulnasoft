@@ -3,10 +3,11 @@ package khulnasoft
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"strings"
 )
 
 func resourceHostRuntimePolicy() *schema.Resource {
@@ -456,6 +457,7 @@ func resourceHostRuntimePolicy() *schema.Resource {
 								Type: schema.TypeString,
 							},
 							Optional: true,
+							Computed: true,
 						},
 						"exclude_directories": {
 							Type:        schema.TypeList,
@@ -473,10 +475,79 @@ func resourceHostRuntimePolicy() *schema.Resource {
 							},
 							Optional: true,
 						},
+						"file_forensic_collection": {
+							Type:        schema.TypeBool,
+							Description: "Whether to enable file forensic collection.",
+							Optional:    true,
+						},
 					},
 				},
 				Optional: true,
 				Computed: true,
+			},
+			"secure_ai_discovery": {
+				Type:        schema.TypeList,
+				MaxItems:    1,
+				Description: "Configuration for Secure AI discovery.",
+				Optional:    true,
+				Computed:    true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": {
+							Type:        schema.TypeBool,
+							Description: "If true, Secure AI discovery is enabled.",
+							Optional:    true,
+						},
+						"ignore_list": {
+							Type:        schema.TypeList,
+							Description: "List of service@model entries to ignore (e.g. OpenAI@gpt-4, Anthropic@*).",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional: true,
+						},
+					},
+				},
+			},
+			"secure_ai_protection": {
+				Type:        schema.TypeList,
+				MaxItems:    1,
+				Description: "Configuration for Secure AI protection.",
+				Optional:    true,
+				Computed:    true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": {
+							Type:        schema.TypeBool,
+							Description: "If true, Secure AI protection is enabled.",
+							Optional:    true,
+						},
+					},
+				},
+			},
+			"secure_ai_unauthorized_models": {
+				Type:        schema.TypeList,
+				MaxItems:    1,
+				Description: "Configuration for Secure AI unauthorized models detection.",
+				Optional:    true,
+				Computed:    true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": {
+							Type:        schema.TypeBool,
+							Description: "If true, unauthorized models detection is enabled.",
+							Optional:    true,
+						},
+						"unauthorized_list": {
+							Type:        schema.TypeList,
+							Description: "List of service@model entries considered unauthorized (e.g. OpenAI@gpt-4, Mistral@*).",
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional: true,
+						},
+					},
+				},
 			},
 			//JSON
 			"failed_kubernetes_checks": {
@@ -517,7 +588,6 @@ func resourceHostRuntimePolicy() *schema.Resource {
 			"enable_ip_reputation": {
 				Type:        schema.TypeBool,
 				Description: "",
-				Default:     true,
 				Optional:    true,
 			}, //bool
 			"fork_guard_process_limit": {
@@ -1268,6 +1338,10 @@ func resourceHostRuntimePolicy() *schema.Resource {
 										Description: "Variable value.",
 										Required:    true,
 									},
+									"name": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
 								},
 							},
 						},
@@ -1697,6 +1771,9 @@ func resourceHostRuntimePolicyRead(ctx context.Context, d *schema.ResourceData, 
 	d.Set("os_users_blocked", crp.BlacklistedOsUsers.UserBlackList)
 	d.Set("os_groups_blocked", crp.BlacklistedOsUsers.GroupBlackList)
 	d.Set("malware_scan_options", flattenMalwareScanOptions(crp.MalwareScanOptions))
+	d.Set("secure_ai_discovery", flattenSecureAIDiscovery(crp.SecureAIDiscovery))
+	d.Set("secure_ai_protection", flattenSecureAIProtection(crp.SecureAIProtection))
+	d.Set("secure_ai_unauthorized_models", flattenSecureAIUnauthorizedModels(crp.SecureAIUnauthorizedModels))
 	d.Set("monitor_system_time_changes", crp.SystemIntegrityProtection.AuditSystemtimeChange)
 	d.Set("monitor_windows_services", crp.SystemIntegrityProtection.WindowsServicesMonitoring)
 	//d.Set("windows_registry_monitoring", flattenWindowsRegistryMonitoring(crp.RegistryAccessMonitoring))
@@ -1853,6 +1930,9 @@ func resourceHostRuntimePolicyUpdate(ctx context.Context, d *schema.ResourceData
 		"container_exec",
 		"reverse_shell",
 		"failed_kubernetes_checks",
+		"secure_ai_discovery",
+		"secure_ai_protection",
+		"secure_ai_unauthorized_models",
 	) {
 		crp := expandHostRuntimePolicy(d)
 		err := c.UpdateRuntimePolicy(crp)
@@ -2113,11 +2193,38 @@ func expandHostRuntimePolicy(d *schema.ResourceData) *client.RuntimePolicy {
 		v := malwareScanOptionsMap.([]interface{})[0].(map[string]interface{})
 
 		crp.MalwareScanOptions = client.MalwareScanOptions{
-			Enabled:            v["enabled"].(bool),
-			Action:             v["action"].(string),
-			ExcludeDirectories: convertStringArrNull(v["exclude_directories"].([]interface{})),
-			ExcludeProcesses:   convertStringArrNull(v["exclude_processes"].([]interface{})),
-			IncludeDirectories: convertStringArrNull(v["include_directories"].([]interface{})),
+			Enabled:                v["enabled"].(bool),
+			Action:                 v["action"].(string),
+			ExcludeDirectories:     convertStringArrNull(v["exclude_directories"].([]interface{})),
+			ExcludeProcesses:       convertStringArrNull(v["exclude_processes"].([]interface{})),
+			IncludeDirectories:     convertStringArrNull(v["include_directories"].([]interface{})),
+			FileForensicCollection: v["file_forensic_collection"].(bool),
+		}
+	}
+
+	secureAIDiscoveryMap, ok := d.GetOk("secure_ai_discovery")
+	if ok {
+		v := secureAIDiscoveryMap.([]interface{})[0].(map[string]interface{})
+		crp.SecureAIDiscovery = client.SecureAIDiscovery{
+			Enabled:    v["enabled"].(bool),
+			IgnoreList: convertStringArrNull(v["ignore_list"].([]interface{})),
+		}
+	}
+
+	secureAIProtectionMap, ok := d.GetOk("secure_ai_protection")
+	if ok {
+		v := secureAIProtectionMap.([]interface{})[0].(map[string]interface{})
+		crp.SecureAIProtection = client.SecureAIProtection{
+			Enabled: v["enabled"].(bool),
+		}
+	}
+
+	secureAIUnauthorizedModelsMap, ok := d.GetOk("secure_ai_unauthorized_models")
+	if ok {
+		v := secureAIUnauthorizedModelsMap.([]interface{})[0].(map[string]interface{})
+		crp.SecureAIUnauthorizedModels = client.SecureAIUnauthorizedModels{
+			Enabled:          v["enabled"].(bool),
+			UnauthorizedList: convertStringArrNull(v["unauthorized_list"].([]interface{})),
 		}
 	}
 
@@ -2678,11 +2785,12 @@ func flattenMalwareScanOptions(monitoring client.MalwareScanOptions) []map[strin
 	//}
 	return []map[string]interface{}{
 		{
-			"enabled":             monitoring.Enabled,
-			"action":              monitoring.Action,
-			"exclude_directories": monitoring.ExcludeDirectories,
-			"exclude_processes":   monitoring.ExcludeProcesses,
-			"include_directories": monitoring.IncludeDirectories,
+			"enabled":                  monitoring.Enabled,
+			"action":                   monitoring.Action,
+			"exclude_directories":      monitoring.ExcludeDirectories,
+			"exclude_processes":        monitoring.ExcludeProcesses,
+			"include_directories":      monitoring.IncludeDirectories,
+			"file_forensic_collection": monitoring.FileForensicCollection,
 		},
 	}
 }
@@ -2798,15 +2906,6 @@ func flattenReadonlyFiles(files client.ReadonlyFiles) []map[string]interface{} {
 	}
 }
 
-// maskSensitiveField masks sensitive values for logging and state display
-func maskSensitiveField(value string) string {
-	if value == "" {
-		return ""
-	}
-	// Return a masked version of the sensitive field
-	return "********"
-}
-
 func flattenTripwire(tripwire client.Tripwire) []map[string]interface{} {
 	//if !tripwire.Enabled {
 	//	return []map[string]interface{}{}
@@ -2815,7 +2914,7 @@ func flattenTripwire(tripwire client.Tripwire) []map[string]interface{} {
 		{
 			"enabled":        tripwire.Enabled,
 			"user_id":        tripwire.UserID,
-			"user_password":  maskSensitiveField(tripwire.UserPassword),
+			"user_password":  tripwire.UserPassword,
 			"apply_on":       tripwire.ApplyOn,
 			"serverless_app": tripwire.ServerlessApp,
 		},
@@ -3016,6 +3115,7 @@ func flattenVariables(variables []interface{}) []client.Variable {
 		val := v.(map[string]interface{})
 		result = append(result, client.Variable{
 			Attribute: val["attribute"].(string),
+			Name:      val["name"].(string),
 			Value:     val["value"].(string),
 		})
 	}

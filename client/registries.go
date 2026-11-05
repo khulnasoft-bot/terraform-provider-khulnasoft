@@ -11,42 +11,64 @@ import (
 
 // Registry defines a registry
 type Registry struct {
-	Name                       string    `json:"name"`
-	Type                       string    `json:"type"` // [HUB, V1/V2, ENGINE, AWS, GCR]
-	Description                string    `json:"description"`
-	Author                     string    `json:"author"`
-	Lastupdate                 int       `json:"lastupdate"`
-	URL                        string    `json:"url"`
-	Username                   string    `json:"username"`
-	Password                   string    `json:"password"`
-	ImageCreationDateCondition string    `json:"image_creation_date_condition"`
-	AdvancedSettingsCleanup    bool      `json:"advanced_settings_cleanup"`
-	AutoPull                   bool      `json:"auto_pull"`
-	AutoPullTime               string    `json:"auto_pull_time"`
-	AutoPullMax                int       `json:"auto_pull_max"`
-	RegistryScanTimeout        int       `json:"registry_scan_timeout"`
-	AutoPullInterval           int       `json:"auto_pull_interval"`
-	AutoCleanUp                bool      `json:"auto_cleanup"`
-	AlwaysPullPatterns         []string  `json:"always_pull_patterns"`
-	PullRepoPatternsExcluded   []string  `json:"pull_repo_patterns_excluded"`
-	AutoPullRescan             bool      `json:"auto_pull_rescan"`
-	Prefixes                   []string  `json:"prefixes"`
-	Webhook                    Webhook   `json:"webhook"`
-	PullImageAge               string    `json:"pull_image_age"`
-	PullImageCount             int       `json:"pull_image_count"`
-	PullImageTagPattern        []string  `json:"pull_image_tag_pattern"`
-	ScannerType                string    `json:"scanner_type"`
-	ScannerName                []string  `json:"scanner_name,omitempty"`
-	ScannerNameAdded           []string  `json:"scanner_name_added,omitempty"`
-	ScannerNameRemoved         []string  `json:"scanner_name_removed,omitempty"`
-	ExistingScanners           []string  `json:"existsing_scanners,omitempty"`
-	Options                    []Options `json:"options"`
-	DefaultPrefix              string    `json:"default_prefix"`
+	Name                       string       `json:"name"`
+	Type                       string       `json:"type"` // [HUB, V1/V2, ENGINE, AWS, GCR]
+	Description                string       `json:"description"`
+	Author                     string       `json:"author"`
+	Lastupdate                 int          `json:"lastupdate"`
+	URL                        string       `json:"url"`
+	Username                   string       `json:"username"`
+	Password                   string       `json:"password"`
+	ImageCreationDateCondition string       `json:"image_creation_date_condition"`
+	AdvancedSettingsCleanup    bool         `json:"advanced_settings_cleanup"`
+	AutoPull                   bool         `json:"auto_pull"`
+	AutoPullTime               string       `json:"auto_pull_time"`
+	AutoPullMax                int          `json:"auto_pull_max"`
+	RegistryScanTimeout        int          `json:"registry_scan_timeout"`
+	AutoPullInterval           int          `json:"auto_pull_interval"`
+	AutoCleanUp                bool         `json:"auto_cleanup"`
+	AlwaysPullPatterns         []string     `json:"always_pull_patterns"`
+	PullRepoPatternsExcluded   []string     `json:"pull_repo_patterns_excluded"`
+	AutoPullRescan             bool         `json:"auto_pull_rescan"`
+	Prefixes                   []string     `json:"prefixes"`
+	Webhook                    Webhook      `json:"webhook"`
+	PullImageAge               string       `json:"pull_image_age"`
+	PullImageCount             int          `json:"pull_image_count"`
+	PullImageTagPattern        []string     `json:"pull_image_tag_pattern"`
+	ScannerType                string       `json:"scanner_type,omitempty"`
+	ScannerGroupName           string       `json:"scanner_group_name,omitempty"`
+	ScannerName                []string     `json:"scanner_name,omitempty"`
+	ScannerNameAdded           []string     `json:"scanner_name_added,omitempty"`
+	ScannerNameRemoved         []string     `json:"scanner_name_removed,omitempty"`
+	ExistingScanners           []string     `json:"existsing_scanners,omitempty"`
+	Options                    []Options    `json:"options"`
+	DefaultPrefix              string       `json:"default_prefix"`
+	AutoScanTime               AutoScanTime `json:"auto_scan_time"`
 	//Architecture               string        `json:"architecture"`
 	//ICRAccountId               string        `json:"icr_account_id"`
 	//ACRConnectionType          string        `json:"acr_connection_type"`
 	//SubscriptionId             string        `json:"subscription_id"`
 	//TenantId                   string        `json:"tenant_id"`
+	DetectedType                int      `json:"detected_type,omitempty"`
+	RegistriesType              string   `json:"registries_type,omitempty"`
+	PullRepoPatterns            []string `json:"pull_repo_patterns,omitempty"`
+	PullTagsPattern             []string `json:"pull_tags_pattern,omitempty"`
+	PullMaxTags                 int      `json:"pull_max_tags,omitempty"`
+	Permission                  string   `json:"permission,omitempty"`
+	IsRegistryConnected         bool     `json:"is_registry_connected,omitempty"`
+	ImageS3Prefixes             []string `json:"image_s3_prefixes,omitempty"`
+	ForceSave                   bool     `json:"force_save,omitempty"`
+	ForceOotb                   bool     `json:"force_ootb,omitempty"`
+	AutoPullLatestXffEnabled    bool     `json:"auto_pull_latest_xff_enabled,omitempty"`
+	IsArchitectureSystemDefault bool     `json:"is_architecture_system_default,omitempty"`
+	ClientCert                  string   `json:"client_cert,omitempty"`
+	ClientKey                   string   `json:"client_key,omitempty"`
+	AutoPullInProgress          bool     `json:"auto_pull_in_progress,omitempty"`
+	AutoPullProcessedPageNumber int      `json:"auto_pull_processed_page_number,omitempty"`
+	Architecture                string   `json:"architecture,omitempty"`
+	CloudResources              []string `json:"cloud_resources,omitempty"`
+	ErrorMsg                    string   `json:"error_msg,omitempty"`
+	NexusMttsFfEnabled          bool     `json:"nexus_mtts_ff_enabled"`
 }
 type Webhook struct {
 	Enabled      bool   `json:"enabled,omitempty"`
@@ -58,6 +80,14 @@ type Webhook struct {
 type Options struct {
 	Option string `json:"option"`
 	Value  string `json:"value"`
+}
+
+type AutoScanTime struct {
+	AutoPullDay   int      `json:"auto_pull_day,omitempty"`
+	Iteration     int      `json:"iteration,omitempty"`
+	IterationType string   `json:"iteration_type,omitempty"`
+	Time          string   `json:"time,omitempty"`
+	WeekDays      []string `json:"week_days,omitempty"`
 }
 
 func (cli *Client) GetRegistry(name string) (*Registry, error) {
@@ -123,7 +153,7 @@ func (cli *Client) CreateRegistry(reg Registry) error {
 		return err
 	}
 	request := cli.gorequest
-	apiPath := fmt.Sprintf("/api/v1/registries")
+	apiPath := "/api/v1/registries"
 	err = cli.limiter.Wait(context.Background())
 	if err != nil {
 		return err

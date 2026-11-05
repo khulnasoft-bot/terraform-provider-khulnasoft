@@ -1,12 +1,18 @@
 package client
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	neturl "net/url"
+	"strings"
+	"time"
 
 	"github.com/khulnasoft/terraform-provider-khulnasoft/consts"
 	"github.com/parnurzeal/gorequest"
@@ -16,18 +22,22 @@ import (
 
 // Client - API client
 type Client struct {
-	url        string
-	saasUrl    string
-	tokenUrl   string
-	user       string
-	password   string
-	apiKey     string
-	apiSecret  string
-	token      string
-	name       string
-	gorequest  *gorequest.SuperAgent
-	clientType string
-	limiter    *rate.Limiter
+	url              string
+	tokenUrl         string
+	saasScpUrl       string
+	user             string
+	password         string
+	token            string
+	name             string
+	khulnasoft_api_key     string
+	khulnasoft_api_secret  string
+	useAPIKey        bool
+	gorequest        *gorequest.SuperAgent
+	clientType       string
+	limiter          *rate.Limiter
+	Validity         int
+	AllowedEndpoints []string
+	CSPRoles         []string
 }
 
 const Csp string = "csp"
@@ -38,8 +48,19 @@ const UserAgentBase = "terraform-provider-khulnasoft"
 
 var version string
 
+func NewClientWithTokenAuth(urlStr, user, password string, verifyTLS bool, caCertByte []byte) (*Client, error) {
+	return NewClient(urlStr, user, password, "", "", false, verifyTLS, caCertByte)
+}
+
+func NewClientWithAPIKey(urlStr, apiKey, secretkey string, verifyTLS bool, caCertByte []byte) (*Client, error) {
+	if strings.TrimSpace(apiKey) == "" || strings.TrimSpace(secretkey) == "" {
+		return nil, fmt.Errorf("api key auth requires both khulnasoft_api_key and khulnasoft_api_secret")
+	}
+	return NewClient(urlStr, "", "", apiKey, secretkey, true, verifyTLS, caCertByte)
+}
+
 // NewClient - initialize and return the Client
-func NewClient(url, user, password string, verifyTLS bool, caCertByte []byte) *Client {
+func NewClient(url, user, password, apiKey, secretkey string, useAPIKey, verifyTLS bool, caCertByte []byte) (*Client, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: !verifyTLS,
 	}
@@ -58,12 +79,18 @@ func NewClient(url, user, password string, verifyTLS bool, caCertByte []byte) *C
 	request := gorequest.New().TLSClientConfig(tlsConfig)
 
 	c := &Client{
-		url:       url,
-		user:      user,
-		password:  password,
-		gorequest: request,
+		url:             url,
+		user:            user,
+		password:        password,
+		gorequest:       request,
+		khulnasoft_api_key:    apiKey,
+		khulnasoft_api_secret: secretkey,
+		useAPIKey:       useAPIKey,
 		// we are setting rate limit for 10 connection per second
-		limiter: rate.NewLimiter(10, 3),
+		limiter:          rate.NewLimiter(10, 3),
+		Validity:         1500,
+		AllowedEndpoints: []string{"ANY"},
+		CSPRoles:         []string{"Admin"},
 	}
 
 	// Determine if we need to use a proxy
@@ -77,187 +104,122 @@ func NewClient(url, user, password string, verifyTLS bool, caCertByte []byte) *C
 	case consts.SaasUrl:
 		c.clientType = Saas
 		c.tokenUrl = consts.SaasTokenUrl
-		c.saasUrl = consts.SaasUrl
+		c.saasScpUrl = consts.SaasSupplyChainUrl
 		break
 	case consts.SaasEu1Url:
 		c.clientType = Saas
 		c.tokenUrl = consts.SaasEu1TokenUrl
-		c.saasUrl = consts.SaasEu1Url
+		c.saasScpUrl = consts.SaasEu1SupplyChainUrl
 		break
 	case consts.SaasAsia1Url:
 		c.clientType = Saas
 		c.tokenUrl = consts.SaasAsia1TokenUrl
-		c.saasUrl = consts.SaasAsia1Url
+		c.saasScpUrl = consts.SaasAsia1SupplyChainUrl
 		break
 	case consts.SaasAsia2Url:
 		c.clientType = Saas
 		c.tokenUrl = consts.SaasAsia2TokenUrl
-		c.saasUrl = consts.SaasAsia2Url
+		c.saasScpUrl = consts.SaasSupplyChainUrl
 		break
 	case consts.SaaSAu2Url:
 		c.clientType = Saas
 		c.tokenUrl = consts.SaasAu2TokenUrl
-		c.saasUrl = consts.SaaSAu2Url
+		c.saasScpUrl = consts.SaasAu2SupplyChainUrl
 		break
 	case consts.SaasDevUrl:
 		c.clientType = SaasDev
 		c.tokenUrl = consts.SaasDevTokenUrl
-		c.saasUrl = consts.SaasDevUrl
+		c.saasScpUrl = consts.SaasDevSupplyChainUrl
 		break
 	default:
 		c.clientType = Csp
 		break
 	}
 
-	return c
+	return c, nil
 }
 
-// NewClientWithAPIKey - initialize and return the Client with API key authentication
-func NewClientWithAPIKey(url, apiKey, apiSecret string, verifyTLS bool, caCertByte []byte) *Client {
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: !verifyTLS,
-	}
+func (cli *Client) AuthenticateWithAPIKey() (string, error) {
+	apiPath := "/v2/tokens"
 
-	roots := x509.NewCertPool()
-	if len(caCertByte) > 0 {
-		roots.AppendCertsFromPEM(caCertByte)
+	var provUrl string
 
-		if verifyTLS {
-			tlsConfig = &tls.Config{
-				RootCAs: roots,
-			}
-		}
-	}
-
-	request := gorequest.New().TLSClientConfig(tlsConfig)
-
-	c := &Client{
-		url:       url,
-		apiKey:    apiKey,
-		apiSecret: apiSecret,
-		gorequest: request,
-		// we are setting rate limit for 10 connection per second
-		limiter: rate.NewLimiter(10, 3),
-	}
-
-	// Determine if we need to use a proxy
-	uURL, _ := neturl.Parse(c.url)
-	proxy, _ := httpproxy.FromEnvironment().ProxyFunc()(uURL)
-	if proxy != nil {
-		c.gorequest.Proxy(proxy.String())
-	}
-
-	switch url {
+	switch cli.url {
 	case consts.SaasUrl:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasTokenUrl
-		c.saasUrl = consts.SaasUrl
+		provUrl = consts.SaasProvUrl
 		break
 	case consts.SaasEu1Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasEu1TokenUrl
-		c.saasUrl = consts.SaasEu1Url
+		provUrl = consts.SaasEu1ProvUrl
 		break
 	case consts.SaasAsia1Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasAsia1TokenUrl
-		c.saasUrl = consts.SaasAsia1Url
+		provUrl = consts.SaasAsia1ProvUrl
 		break
 	case consts.SaasAsia2Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasAsia2TokenUrl
-		c.saasUrl = consts.SaasAsia2Url
+		provUrl = consts.SaasAsia2ProvUrl
 		break
 	case consts.SaaSAu2Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasAu2TokenUrl
-		c.saasUrl = consts.SaaSAu2Url
+		provUrl = consts.SaasAu2ProvUrl
 		break
 	case consts.SaasDevUrl:
-		c.clientType = SaasDev
-		c.tokenUrl = consts.SaasDevTokenUrl
-		c.saasUrl = consts.SaasDevUrl
+		provUrl = consts.SaasDevProvUrl
 		break
 	default:
-		c.clientType = Csp
-		break
+		return "", fmt.Errorf("%v URL is not allowed USE url", cli.url)
 	}
-
-	return c
-}
-
-// NewClientWithTokenAuth - initialize and return the Client with username/password authentication
-func NewClientWithTokenAuth(url, user, password string, verifyTLS bool, caCertByte []byte) *Client {
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: !verifyTLS,
+	reqBody := map[string]interface{}{
+		"validity":          cli.Validity,
+		"allowed_endpoints": cli.AllowedEndpoints,
+		"csp_roles":         cli.CSPRoles,
 	}
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request body: %v", err)
+	}
+	agent, errs := cli.signedRequest("POST", cli.tokenUrl+apiPath, jsonBody)
+	if errs != nil {
+		return "", errs
+	}
+	resp, body, err1 := agent.Post(cli.tokenUrl + apiPath).Send(string(jsonBody)).SetDebug(true).End()
+	if err1 != nil {
+		return "", getMergedError(err1)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("API key token request failed: status %s, body %s", resp.Status, body)
+	}
+	if resp.StatusCode == 200 {
+		var raw map[string]interface{}
+		_ = json.Unmarshal([]byte(body), &raw)
+		data, ok := raw["data"]
+		if !ok {
+			return "", fmt.Errorf("response missing data field: %v", raw)
+		}
+		if token, isStr := data.(string); isStr {
+			cli.token = token
+		}
+		//get the ese_url to make the API requests.
+		request := cli.gorequest
+		if request == nil {
+			return "", fmt.Errorf("request is uninitialized")
+		}
 
-	roots := x509.NewCertPool()
-	if len(caCertByte) > 0 {
-		roots.AppendCertsFromPEM(caCertByte)
-
-		if verifyTLS {
-			tlsConfig = &tls.Config{
-				RootCAs: roots,
+		request.Set("Authorization", "Bearer "+cli.token)
+		events, body, errs := request.Clone().Get(provUrl + "/v1/envs").End()
+		if errs != nil || events == nil {
+			if events != nil {
+				log.Println(events.StatusCode)
 			}
+			err := fmt.Errorf("error calling %s", provUrl)
+			return "", err
+		}
+
+		if events.StatusCode == 200 {
+			var raw map[string]interface{}
+			_ = json.Unmarshal([]byte(body), &raw)
+			data := raw["data"].(map[string]interface{})
+			cli.url = "https://" + data["ese_url"].(string)
 		}
 	}
-
-	request := gorequest.New().TLSClientConfig(tlsConfig)
-
-	c := &Client{
-		url:       url,
-		user:      user,
-		password:  password,
-		gorequest: request,
-		// we are setting rate limit for 10 connection per second
-		limiter: rate.NewLimiter(10, 3),
-	}
-
-	// Determine if we need to use a proxy
-	uURL, _ := neturl.Parse(c.url)
-	proxy, _ := httpproxy.FromEnvironment().ProxyFunc()(uURL)
-	if proxy != nil {
-		c.gorequest.Proxy(proxy.String())
-	}
-
-	switch url {
-	case consts.SaasUrl:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasTokenUrl
-		c.saasUrl = consts.SaasUrl
-		break
-	case consts.SaasEu1Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasEu1TokenUrl
-		c.saasUrl = consts.SaasEu1Url
-		break
-	case consts.SaasAsia1Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasAsia1TokenUrl
-		c.saasUrl = consts.SaasAsia1Url
-		break
-	case consts.SaasAsia2Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasAsia2TokenUrl
-		c.saasUrl = consts.SaasAsia2Url
-		break
-	case consts.SaaSAu2Url:
-		c.clientType = Saas
-		c.tokenUrl = consts.SaasAu2TokenUrl
-		c.saasUrl = consts.SaaSAu2Url
-		break
-	case consts.SaasDevUrl:
-		c.clientType = SaasDev
-		c.tokenUrl = consts.SaasDevTokenUrl
-		c.saasUrl = consts.SaasDevUrl
-		break
-	default:
-		c.clientType = Csp
-		break
-	}
-
-	return c
+	return cli.token, nil
 }
 
 func (cli *Client) SetAuthToken(token string) {
@@ -271,20 +233,20 @@ func (cli *Client) SetUrl(url string) {
 func (cli *Client) GetAuthToken() (string, string, error) {
 	var err error
 
-	// Use API key authentication if API key is provided
-	if cli.apiKey != "" && cli.apiSecret != "" {
-		if cli.clientType == "csp" {
-			_, err = cli.GetCspAuthTokenWithAPIKey()
-		} else {
-			_, _, err = cli.GetUSEAuthTokenWithAPIKey()
+	if cli.useAPIKey {
+		if cli.token != "" {
+			return cli.token, cli.url, nil
 		}
+		tok, err := cli.AuthenticateWithAPIKey()
+		if err != nil {
+			return "", "", err
+		}
+		return tok, cli.url, nil
+	}
+	if cli.clientType == "csp" {
+		_, err = cli.GetCspAuthToken()
 	} else {
-		// Use username/password authentication
-		if cli.clientType == "csp" {
-			_, err = cli.GetCspAuthToken()
-		} else {
-			_, _, err = cli.GetUSEAuthToken()
-		}
+		_, _, err = cli.GetUSEAuthToken()
 	}
 
 	if err != nil {
@@ -335,7 +297,7 @@ func (cli *Client) GetUSEAuthToken() (string, string, error) {
 		provUrl = consts.SaasDevProvUrl
 		break
 	default:
-		return "", "", fmt.Errorf(fmt.Sprintf("%v URL is not allowed USE url", cli.url))
+		return "", "", fmt.Errorf("%v URL is not allowed USE url", cli.url)
 	}
 
 	resp, body, errs := cli.makeRequest().Post(cli.tokenUrl + "/v2/signin").
@@ -378,92 +340,44 @@ func (cli *Client) GetUSEAuthToken() (string, string, error) {
 	return "", "", fmt.Errorf("request failed. status: %s, response: %s", resp.Status, body)
 }
 
-// GetCspAuthTokenWithAPIKey - Connect to Khulnasoft using API key and return a JWT bearerToken (string)
-func (cli *Client) GetCspAuthTokenWithAPIKey() (string, error) {
-	resp, body, errs := cli.makeRequest().Post(cli.url + "/api/v1/login").
-		Send(`{"id":"` + cli.apiKey + `", "password":"` + cli.apiSecret + `"}`).End()
-	if errs != nil {
-		return "", getMergedError(errs)
-	}
-
-	if resp.StatusCode == 200 {
-		var raw map[string]interface{}
-		_ = json.Unmarshal([]byte(body), &raw)
-		cli.token = raw["token"].(string)
-		return cli.token, nil
-	}
-
-	return "", fmt.Errorf("request failed. status: %s, response: %s", resp.Status, body)
-}
-
-// GetUSEAuthTokenWithAPIKey - Connect to Khulnasoft SaaS solution using API key and return a JWT bearerToken (string)
-func (cli *Client) GetUSEAuthTokenWithAPIKey() (string, string, error) {
-	var provUrl string
-
-	switch cli.url {
-	case consts.SaasUrl:
-		provUrl = consts.SaasProvUrl
-		break
-	case consts.SaasEu1Url:
-		provUrl = consts.SaasEu1ProvUrl
-		break
-	case consts.SaasAsia1Url:
-		provUrl = consts.SaasAsia1ProvUrl
-		break
-	case consts.SaasAsia2Url:
-		provUrl = consts.SaasAsia2ProvUrl
-		break
-	case consts.SaaSAu2Url:
-		provUrl = consts.SaasAu2ProvUrl
-		break
-	case consts.SaasDevUrl:
-		provUrl = consts.SaasDevProvUrl
-		break
-	default:
-		return "", "", fmt.Errorf(fmt.Sprintf("%v URL is not allowed USE url", cli.url))
-	}
-
-	resp, body, errs := cli.makeRequest().Post(cli.tokenUrl + "/v2/signin").
-		Send(`{"email":"` + cli.apiKey + `", "password":"` + cli.apiSecret + `"}`).End()
-	if errs != nil {
-		return "", "", getMergedError(errs)
-	}
-
-	if resp.StatusCode == 200 {
-		var raw map[string]interface{}
-		_ = json.Unmarshal([]byte(body), &raw)
-		data := raw["data"].(map[string]interface{})
-		cli.token = data["token"].(string)
-		//get the ese_url to make the API requests.
-		request := cli.gorequest
-		if request == nil {
-			return "", "", fmt.Errorf("request is uninitialized")
-		}
-
-		request.Set("Authorization", "Bearer "+cli.token)
-		events, body, errs := request.Clone().Get(provUrl + "/v1/envs").End()
-		if errs != nil || events == nil {
-			if events != nil {
-				log.Println(events.StatusCode)
-			}
-			err := fmt.Errorf("error calling %s", provUrl)
-			return "", "", err
-		}
-
-		if events.StatusCode == 200 {
-			var raw map[string]interface{}
-			_ = json.Unmarshal([]byte(body), &raw)
-			data := raw["data"].(map[string]interface{})
-			cli.url = "https://" + data["ese_url"].(string)
-		}
-
-		return cli.token, cli.url, nil
-	}
-
-	return "", "", fmt.Errorf("request failed. status: %s, response: %s", resp.Status, body)
-}
-
 func (cli *Client) makeRequest() *gorequest.SuperAgent {
 	userAgent := fmt.Sprintf("%s/%s", UserAgentBase, version)
 	return cli.gorequest.Clone().Set("User-Agent", userAgent)
+}
+
+// scpRequest returns a SuperAgent configured for supply chain API calls.
+// The supply chain API only accepts JWT Bearer tokens (no HMAC signing).
+func (cli *Client) scpRequest() (*gorequest.SuperAgent, error) {
+	if cli.token == "" {
+		return nil, fmt.Errorf("no auth token available for supply chain API request")
+	}
+	agent := cli.gorequest.Clone().Set("Authorization", "Bearer "+cli.token)
+	return agent, nil
+}
+
+func (cli *Client) signedRequest(method, fullURL string, body []byte) (*gorequest.SuperAgent, error) {
+	u, err := url.Parse(fullURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url %q: %w", fullURL, err)
+	}
+	path := u.Path
+	methodUpper := strings.ToUpper(method)
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+
+	bodyStr := ""
+	if len(body) > 0 {
+		bodyStr = string(body)
+	}
+
+	payload := timestamp + methodUpper + path + bodyStr
+
+	mac := hmac.New(sha256.New, []byte(cli.khulnasoft_api_secret))
+	mac.Write([]byte(payload))
+	sig := hex.EncodeToString(mac.Sum(nil))
+	agent := cli.gorequest.Clone()
+	agent.Set("X-API-Key", cli.khulnasoft_api_key)
+	agent.Set("X-Timestamp", timestamp)
+	agent.Set("X-Signature", sig)
+
+	return agent, nil
 }

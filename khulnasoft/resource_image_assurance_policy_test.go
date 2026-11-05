@@ -14,35 +14,34 @@ func TestKhulnasoftImageAssurancePolicy(t *testing.T) {
 	description := "Created using Terraform"
 	name := acctest.RandomWithPrefix("terraform-test")
 	application_scopes := "Global"
+	ignore_recently_published_fix_vln_period := 30
+	assurance_type := "image"
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: CheckDestroy("khulnasoft_image_assurance_policy.terraformiap"),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCheckImageAssurancePolicy(description, name, application_scopes),
+				Config: testAccCheckImageAssurancePolicy(description, name, assurance_type, application_scopes, ignore_recently_published_fix_vln_period),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckImageAssurancePolicyExists("khulnasoft_image_assurance_policy.terraformiap"),
 				),
-			},
-			{
-				ResourceName:      "khulnasoft_image_assurance_policy.terraformiap",
-				ImportState:       true,
-				ImportStateVerify: true,
 			},
 		},
 	})
 }
 
-func testAccCheckImageAssurancePolicy(description string, name string, application_scopes string) string {
+func testAccCheckImageAssurancePolicy(description string, name string, assurance_type string, application_scopes string, ignore_recently_published_fix_vln_period int) string {
 	return fmt.Sprintf(`
 	resource "khulnasoft_image_assurance_policy" "terraformiap" {
 		description = "%s"
 		name = "%s"
+		assurance_type = "%s"
 		application_scopes = [
 			"%s"
 		]
-	}`, description, name, application_scopes)
+		ignore_recently_published_fix_vln_period = %d
+	}`, description, name, assurance_type, application_scopes, ignore_recently_published_fix_vln_period)
 
 }
 

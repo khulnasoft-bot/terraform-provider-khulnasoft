@@ -22,8 +22,10 @@ resource "khulnasoft_enforcer_groups" "group" {
   sync_host_images = true
   # Risk Explorer
   risk_explorer_auto_discovery = true
+  # Prometheus metrics
+  enable_enforcer_group_prometheus = true
   # host_forensics
-  host_forensics = true
+  host_forensics_collection = true
   # forensics
   forensics = true
 

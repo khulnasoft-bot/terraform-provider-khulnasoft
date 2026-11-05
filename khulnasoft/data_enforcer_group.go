@@ -1,16 +1,18 @@
 package khulnasoft
 
 import (
+	"context"
 	"log"
 
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataSourceEnforcerGroup() *schema.Resource {
 	return &schema.Resource{
 		Description: "The data source `khulnasoft_enforcer_groups` provides an Enforcer group template that generates a configuration file, which is subsequently used to generate one or more Enforcers using a Docker command.",
-		Read:        dataEnforcerGroupRead,
+		ReadContext: dataEnforcerGroupRead,
 		Schema: map[string]*schema.Schema{
 			"group_id": {
 				Type:        schema.TypeString,
@@ -80,7 +82,7 @@ func dataSourceEnforcerGroup() *schema.Resource {
 				Description: "Select Enabled to send activity logs in your containers to the Khulnasoft Server for forensics purposes.",
 				Optional:    true,
 			},
-			"host_forensics": {
+			"host_forensics_collection": {
 				Type:        schema.TypeBool,
 				Description: "Select Enabled to send activity logs in your host to the Khulnasoft Server for forensics purposes.",
 				Optional:    true,
@@ -93,6 +95,11 @@ func dataSourceEnforcerGroup() *schema.Resource {
 			"user_access_control": {
 				Type:        schema.TypeBool,
 				Description: "When set to `True` applies User Access Control Policies to containers. Note that Khulnasoft Enforcers must be deployed with the KHULNASOFT_RUNC_INTERCEPTION environment variable set to 0 in order to use User Access Control Policies.",
+				Computed:    true,
+			},
+			"enable_enforcer_group_prometheus": {
+				Type:        schema.TypeBool,
+				Description: "Enable Prometheus metrics for the enforcer group.",
 				Computed:    true,
 			},
 			"image_assurance": {
@@ -339,6 +346,26 @@ func dataSourceEnforcerGroup() *schema.Resource {
 				Description: "This setting is available only when you have license for `Advanced Malware Protection`. Send true to make use of the license and enable the `Real-time Malware Protection` control in the Host Runtime policies.",
 				Computed:    true,
 			},
+			"container_secure_ai": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI for container workloads.",
+				Computed:    true,
+			},
+			"container_secure_ai_local_models": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI local models for container workloads.",
+				Computed:    true,
+			},
+			"host_secure_ai": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI for host workloads.",
+				Computed:    true,
+			},
+			"host_secure_ai_local_models": {
+				Type:        schema.TypeBool,
+				Description: "Enable Secure AI local models for host workloads.",
+				Computed:    true,
+			},
 			"host_user_protection": {
 				Type:        schema.TypeBool,
 				Description: " When set to `True` enables these Host Runtime Policy controls: `OS Users and Groups Allowed` and `OS Users and Groups Blocked`",
@@ -386,11 +413,47 @@ func dataSourceEnforcerGroup() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
+			"schedule_scan_settings": {
+				Type:        schema.TypeList,
+				Description: "Scheduling scan time for which you are creating the Enforcer group.",
+				Computed:    true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"disabled": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"is_custom": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"days": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeInt,
+							},
+						},
+						"time": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeInt,
+							},
+						},
+					},
+				},
+			},
+			"unified_mode": {
+				Type:        schema.TypeBool,
+				Description: "Indicates whether the Enforcer group is in unified mode.",
+				Computed:    true,
+			},
 		},
 	}
 }
 
-func dataEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
+func dataEnforcerGroupRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 	name := d.Get("group_id").(string)
 	group, err := ac.GetEnforcerGroup(name)
@@ -408,9 +471,10 @@ func dataEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("behavioral_engine", group.BehavioralEngine)
 		d.Set("host_behavioral_engine", group.HostBehavioralEngine)
 		d.Set("forensics", group.ContainerForensicsCollection)
-		d.Set("host_forensics", group.HostForensicsCollection)
+		d.Set("host_forensics_collection", group.HostForensicsCollection)
 		d.Set("host_network_protection", group.HostNetworkProtection)
 		d.Set("user_access_control", group.UserAccessControl)
+		d.Set("enable_enforcer_group_prometheus", group.EnableEnforcerGroupPrometheus)
 		d.Set("image_assurance", group.ImageAssurance)
 		d.Set("host_protection", group.HostProtection)
 		d.Set("audit_all", group.AuditAll)
@@ -418,6 +482,7 @@ func dataEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("token", group.Token)
 		d.Set("command", flattenCommands(group.Command))
 		d.Set("orchestrator", flattenOrchestrators(group.Orchestrator))
+		d.Set("schedule_scan_settings", flattenScheduleScanSetting(group.ScheduleScanSettings))
 		d.Set("type", group.Type)
 		d.Set("host_os", group.HostOs)
 		d.Set("install_command", group.InstallCommand)
@@ -452,15 +517,20 @@ func dataEnforcerGroupRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("host_user_protection", group.HostUserProtection)
 		d.Set("container_antivirus_protection", group.ContainerAntivirusProtection)
 		d.Set("host_assurance", group.HostAssurance)
+		d.Set("container_secure_ai", group.ContainerSecureAI)
+		d.Set("container_secure_ai_local_models", group.ContainerSecureAILocalModels)
+		d.Set("host_secure_ai", group.HostSecureAI)
+		d.Set("host_secure_ai_local_models", group.HostSecureAILocalModels)
 		d.Set("gateways", group.Gateways)
 		d.Set("allowed_applications", group.AllowedApplications)
 		d.Set("allowed_labels", group.AllowedLabels)
 		d.Set("allowed_registries", group.AllowedRegistries)
+		d.Set("unified_mode", group.UnifiedMode)
 
 		log.Println("[DEBUG]  setting id: ", name)
 		d.SetId(name)
 	} else {
-		return err
+		return diag.FromErr(err)
 	}
 	//gateways := d.Get("gateways").([]interface{})
 
@@ -479,6 +549,17 @@ func flattenOrchestrator(Orch client.EnforcerOrchestrator) map[string]interface{
 		"master":          Orch.Master,
 		"service_account": Orch.ServiceAccount,
 		"namespace":       Orch.Namespace,
+	}
+}
+
+func flattenScheduleScanSetting(setting client.EnforcerScheduleScanSettings) []interface{} {
+	return []interface{}{
+		map[string]interface{}{
+			"disabled":  setting.Disabled,
+			"is_custom": setting.IsCustom,
+			"days":      setting.Days,
+			"time":      setting.Time,
+		},
 	}
 }
 

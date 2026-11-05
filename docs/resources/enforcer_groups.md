@@ -42,7 +42,10 @@ description: |-
 - `block_admission_control` (Boolean) This applies only if both `Enable admission control` and Enforce mode are set. This additional option must be selected for admission control to work if the KubeEnforcer is not connected to any Gateway. If this option is not selected, admission control will be disabled; this will have no effect on containers already running.
 - `container_activity_protection` (Boolean) Set `True` to apply Container Runtime Policies, Image Profiles, and Firewall Policies to containers.
 - `container_antivirus_protection` (Boolean) This setting is available only when you have license for `Advanced Malware Protection`. Send true to make use of the license and enable the `Real-time Malware Protection` control in the Container Runtime policies.
+- `container_secure_ai` (Boolean) Enable Secure AI for container workloads.
+- `container_secure_ai_local_models` (Boolean) Enable Secure AI local models for container workloads.
 - `description` (String) A description of the Khulnasoft Enforcer group.
+- `enable_enforcer_group_prometheus` (Boolean) Enable Prometheus metrics for the enforcer group.
 - `enforce` (Boolean) Whether to enable enforce mode on the Enforcers, defaults to False.
 - `forensics` (Boolean) Select Enabled to send activity logs in your containers to the Khulnasoft Server for forensics purposes.
 - `gateways` (List of String) List of Khulnasoft gateway IDs for the Enforcers.
@@ -52,6 +55,8 @@ description: |-
 - `host_network_protection` (Boolean) Set `True` to apply Firewall Policies to hosts, and allow recording network maps for Khulnasoft services. The Network Firewall setting must be disabled when deploying the Khulnasoft Enforcer on a machine running Rocky Linux. See https://docs.khulnasoft.com/docs/platform-support-limitations-rocky-linux for further information
 - `host_os` (String) The OS type for the host
 - `host_protection` (Boolean) Set `True` to enable all Host Runtime Policy controls except for `OS Users and Groups Allowed` and `OS Users and Groups Blocked`.
+- `host_secure_ai` (Boolean) Enable Secure AI for host workloads.
+- `host_secure_ai_local_models` (Boolean) Enable Secure AI local models for host workloads.
 - `host_user_protection` (Boolean) Set `True` to enable these Host Runtime Policy controls: `OS Users and Groups Allowed` and `OS Users and Groups Blocked`
 - `image_assurance` (Boolean) Set `True` to enable selected controls: Container Runtime Policy (`Block Non-Compliant Images`, `Block Unregistered Images`, and `Registries Allowed`) and Default Image Assurance Policy (`Images Blocked`).
 - `kube_bench_image_name` (String) See https://docs.khulnasoft.com/docs/securing-kubernetes-applications#section-configuration-hardening, The KubeEnforcer can deploy the Khulnasoft Security kube-bench open-source product to perform Kubernetes CIS benchmark testing of nodes.
@@ -68,6 +73,7 @@ description: |-
 - `schedule_scan_settings` (Block List, Max: 1) Scheduling scan time for which you are creating the Enforcer group. (see [below for nested schema](#nestedblock--schedule_scan_settings))
 - `sync_host_images` (Boolean) Set `True` to configure Enforcers to discover local host images. Discovered images will be listed under Images > Host Images, as well as under Infrastructure (in the Images tab for applicable hosts).
 - `syscall_enabled` (Boolean) Set `True` will allow profiling and monitoring system calls made by running containers.
+- `unified_mode` (Boolean)
 - `user_access_control` (Boolean) Set `True` to apply User Access Control Policies to containers. Note that Khulnasoft Enforcers must be deployed with the KHULNASOFT_RUNC_INTERCEPTION environment variable set to 0 in order to use User Access Control Policies.
 
 ### Read-Only
@@ -123,4 +129,5 @@ Read-Only:
 - `kubernetes` (String)
 - `swarm` (String)
 - `windows` (String)
+
 

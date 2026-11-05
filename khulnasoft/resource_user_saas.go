@@ -35,7 +35,7 @@ func resourceUserSaas() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
-			"user_id": {
+			"id": {
 				Type:     schema.TypeString,
 				Computed: true,
 				ForceNew: true,
@@ -43,6 +43,11 @@ func resourceUserSaas() *schema.Resource {
 			"email": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"mfa_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 			"confirmed": {
 				Type:     schema.TypeBool,
@@ -89,12 +94,16 @@ func resourceUserSaas() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
 						"name": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
-						"group_admin": {
-							Type:     schema.TypeBool,
+						"created": {
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 					},
@@ -117,12 +126,37 @@ func resourceUserSaas() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"user_id": {
-							Type:     schema.TypeInt,
+						"csp_roles": {
+							Type:     schema.TypeList,
 							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"cspm_roles": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"groups": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
 						},
 					},
 				},
+			},
+			"count_failed_signin": {
+				Type:     schema.TypeInt,
+				Computed: true,
+			},
+			"last_signin_attempt": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
@@ -131,7 +165,7 @@ func resourceUserSaas() *schema.Resource {
 func resourceUserSaasCreate(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
 
-	basicId := client.BasicId{Id: d.Get("user_id").(string)}
+	basicId := client.BasicId{Id: d.Get("id").(string)}
 
 	var basicUser client.BasicUser
 
@@ -148,6 +182,11 @@ func resourceUserSaasCreate(d *schema.ResourceData, m interface{}) error {
 	accountAdmin, ok := d.GetOk("account_admin")
 	if ok {
 		basicUser.AccountAdmin = accountAdmin.(bool)
+	}
+
+	mfaEnabled, ok := d.GetOk("mfa_enabled")
+	if ok {
+		basicUser.MfaEnabled = mfaEnabled.(bool)
 	}
 
 	userGroups, ok := d.GetOk("groups")
@@ -180,7 +219,7 @@ func resourceUserSaasCreate(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	d.Set("user_id", user.BasicId.Id)
+	d.Set("id", user.BasicId.Id)
 
 	//adding user to user selected client.BasicUser{}.Groups
 	if user.BasicUser.UserGroups != nil {
@@ -193,7 +232,6 @@ func resourceUserSaasCreate(d *schema.ResourceData, m interface{}) error {
 		for i, group := range user.BasicUser.UserGroups {
 			g := make(map[string]interface{})
 			g["name"] = group.Name
-			g["group_admin"] = group.GroupAdmin
 			groups[i] = g
 		}
 
@@ -227,14 +265,19 @@ func resourceUserSaasRead(d *schema.ResourceData, m interface{}) error {
 	d.Set("multiaccount", r.Multiaccount)
 	d.Set("account_admin", r.AccountAdmin)
 	d.Set("email", r.Email)
-	d.Set("user_id", r.BasicId.Id)
+	d.Set("mfa_enabled", r.MfaEnabled)
+	d.Set("id", r.BasicId.Id)
+	d.Set("count_failed_signin", r.CountFailedSignin)
+	d.Set("last_signin_attempt", r.LastSigninAttempt)
 
 	for i, login := range r.BasicUser.Logins {
 		l := make(map[string]interface{})
 		l["id"] = login.Id
 		l["ip_address"] = login.IpAddress
 		l["created"] = login.Created
-		l["user_id"] = login.UserId
+		l["csp_roles"] = login.CspRoles
+		l["cspm_groups"] = login.CspmGroups
+		l["groups"] = login.Groups
 		logins[i] = l
 	}
 
@@ -249,6 +292,12 @@ func resourceUserSaasUpdate(d *schema.ResourceData, m interface{}) error {
 	//id := d.Id()
 	if d.HasChanges("email") {
 		return fmt.Errorf("user email cannot be changed")
+	}
+	if d.HasChange("mfa_enabled") {
+		err := d.Set("mfa_enabled", d.Get("mfa_enabled").(bool))
+		if err != nil {
+			return fmt.Errorf("error setting mfa_enabled state: %v", err)
+		}
 	}
 	if d.HasChanges("csp_roles", "account_admin", "groups") {
 		var err error
@@ -269,7 +318,7 @@ func resourceUserSaasUpdate(d *schema.ResourceData, m interface{}) error {
 		}
 
 		cspRoles := d.Get("csp_roles").([]interface{})
-		basicId := client.BasicId{Id: d.Get("user_id").(string)}
+		basicId := client.BasicId{Id: d.Get("id").(string)}
 		basicUser := client.BasicUser{
 			AccountAdmin: d.Get("account_admin").(bool),
 			CspRoles:     convertStringArr(cspRoles),
