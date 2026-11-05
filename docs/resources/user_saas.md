@@ -17,24 +17,22 @@ The users created must have at least one Csp Role that is already present within
 
 ```terraform
 resource "khulnasoft_user_saas" "IaC1" {
-  email         = "infrastructure1@example.com"
-  csp_roles     = []
-  account_admin = true
-  mfa_enabled   = false
+    email    = "infrastructure1@example.com"
+    csp_roles = []
+    account_admin = true
 }
 
 resource "khulnasoft_user_saas" "IaC2" {
-  email = "infrastructure2@example.com"
-  csp_roles = [
-    "Default"
-  ]
-  account_admin = false
-  mfa_enabled   = false
-  //optional
-  groups {
-    name        = "IacGroupName"
-    group_admin = false
-  }
+    email    = "infrastructure2@example.com"
+    csp_roles = [
+        "Default"
+    ]
+    account_admin = false
+    //optional
+    groups {
+        name = "IacGroupName"
+        group_admin = false
+    }
 }
 ```
 
@@ -50,15 +48,12 @@ resource "khulnasoft_user_saas" "IaC2" {
 ### Optional
 
 - `groups` (Block List) (see [below for nested schema](#nestedblock--groups))
-- `mfa_enabled` (Boolean)
 
 ### Read-Only
 
 - `confirmed` (Boolean)
-- `count_failed_signin` (Number)
 - `created` (String)
 - `id` (String) The ID of this resource.
-- `last_signin_attempt` (String)
 - `logins` (List of Object) (see [below for nested schema](#nestedatt--logins))
 - `multiaccount` (Boolean)
 - `password_reset` (Boolean)
@@ -66,18 +61,15 @@ resource "khulnasoft_user_saas" "IaC2" {
 - `send_new_plugins` (Boolean)
 - `send_new_risks` (Boolean)
 - `send_scan_results` (Boolean)
+- `user_id` (String)
 
 <a id="nestedblock--groups"></a>
 ### Nested Schema for `groups`
 
 Optional:
 
-- `created` (String)
+- `group_admin` (Boolean)
 - `name` (String)
-
-Read-Only:
-
-- `id` (Number) The ID of this resource.
 
 
 <a id="nestedatt--logins"></a>
@@ -86,10 +78,8 @@ Read-Only:
 Read-Only:
 
 - `created` (String)
-- `csp_roles` (List of String)
-- `cspm_roles` (List of String)
-- `groups` (List of String)
 - `id` (Number)
 - `ip_address` (String)
+- `user_id` (Number)
 
 

@@ -32,7 +32,7 @@ output "group_details" {
 ### Optional
 
 - `forensics` (Boolean) Select Enabled to send activity logs in your containers to the Khulnasoft Server for forensics purposes.
-- `host_forensics_collection` (Boolean) Select Enabled to send activity logs in your host to the Khulnasoft Server for forensics purposes.
+- `host_forensics` (Boolean) Select Enabled to send activity logs in your host to the Khulnasoft Server for forensics purposes.
 
 ### Read-Only
 
@@ -58,12 +58,9 @@ output "group_details" {
 - `connected_count` (Number) Number of connected enforcers in the enforcer group.
 - `container_activity_protection` (Boolean) When set to `True` applies Container Runtime Policies, Image Profiles, and Firewall Policies to containers.
 - `container_antivirus_protection` (Boolean) This setting is available only when you have license for `Advanced Malware Protection`. Send true to make use of the license and enable the `Real-time Malware Protection` control in the Container Runtime policies.
-- `container_secure_ai` (Boolean) Enable Secure AI for container workloads.
-- `container_secure_ai_local_models` (Boolean) Enable Secure AI local models for container workloads.
 - `description` (String) A description for the Khulnasoft Enforcer group.
 - `disconnected_count` (Number) Number of disconnected enforcers in the enforcer group.
 - `enforce` (Boolean) Whether the enforce mode is enabled on the Enforcers.
-- `enable_enforcer_group_prometheus` (Boolean) Enable Prometheus metrics for the enforcer group.
 - `enforcer_image_name` (String) The specific Khulnasoft Enforcer product image (with image tag) to be deployed.
 - `gateway_address` (String) Gateway Address
 - `gateway_name` (String) Gateway Name
@@ -74,8 +71,6 @@ output "group_details" {
 - `host_network_protection` (Boolean) When set to `True` applies Firewall Policies to hosts, and allows recording network maps for Khulnasoft services. The Network Firewall setting must be disabled when deploying the Khulnasoft Enforcer on a machine running Rocky Linux. See https://docs.khulnasoft.com/docs/platform-support-limitations-rocky-linux for further information
 - `host_os` (String) The OS type for the host
 - `host_protection` (Boolean) When set to `True` enables all Host Runtime Policy controls except for `OS Users and Groups Allowed` and `OS Users and Groups Blocked`.
-- `host_secure_ai` (Boolean) Enable Secure AI for host workloads.
-- `host_secure_ai_local_models` (Boolean) Enable Secure AI local models for host workloads.
 - `host_user_protection` (Boolean) When set to `True` enables these Host Runtime Policy controls: `OS Users and Groups Allowed` and `OS Users and Groups Blocked`
 - `hosts_count` (Number) Number of enforcers in the enforcer group.
 - `id` (String) The ID of this resource.
@@ -99,12 +94,10 @@ output "group_details" {
 - `risk_explorer_auto_discovery` (Boolean) When set to `True` allows Enforcers to be discovered in the Risk Explorer.
 - `runtime_policy_name` (String) Function Runtime Policy that will applay on the nano enforcer.
 - `runtime_type` (String) The container runtime environment.
-- `schedule_scan_settings` (List of Object) Scheduling scan time for which you are creating the Enforcer group. (see [below for nested schema](#nestedatt--schedule_scan_settings))
 - `sync_host_images` (Boolean) When set to `True` configures Enforcers to discover local host images. Discovered images will be listed under Images > Host Images, as well as under Infrastructure (in the Images tab for applicable hosts).
 - `syscall_enabled` (Boolean) When set to `True` allows profiling and monitoring system calls made by running containers.
 - `token` (String) The batch install token.
 - `type` (String) Enforcer Type.
-- `unified_mode` (Boolean) Indicates whether the Enforcer group is in unified mode.
 - `user_access_control` (Boolean) When set to `True` applies User Access Control Policies to containers. Note that Khulnasoft Enforcers must be deployed with the KHULNASOFT_RUNC_INTERCEPTION environment variable set to 0 in order to use User Access Control Policies.
 
 <a id="nestedatt--command"></a>
@@ -127,16 +120,5 @@ Read-Only:
 - `namespace` (String)
 - `service_account` (String)
 - `type` (String)
-
-
-<a id="nestedatt--schedule_scan_settings"></a>
-### Nested Schema for `schedule_scan_settings`
-
-Read-Only:
-
-- `days` (List of Number)
-- `disabled` (Boolean)
-- `is_custom` (Boolean)
-- `time` (List of Number)
 
 

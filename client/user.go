@@ -19,19 +19,15 @@ type FullUser struct {
 }
 
 type Login struct {
-	Id         int      `json:"id"`
-	IpAddress  string   `json:"ip_address"`
-	Created    string   `json:"created"`
-	CspRoles   []string `json:"csp_roles,omitempty"`
-	CspmGroups []string `json:"cspm_groups,omitempty"`
-	Groups     []string `json:"groups,omitempty"`
+	Id        int    `json:"id"`
+	IpAddress string `json:"ip_address"`
+	Created   string `json:"created"`
+	UserId    int    `json:"user_id"`
 }
 
 type UserGroups struct {
-	Id         int    `json:"id"`
 	Name       string `json:"name,omitempty"`
-	Created    string `json:"created,omitempty"`
-	GroupAdmin bool   `json:"group_admin",omitempt"`
+	GroupAdmin bool   `json:"group_admin,omitempty"`
 }
 
 type BasicUser struct {
@@ -51,25 +47,21 @@ type BasicUser struct {
 
 	//SaaS vars:
 	//Dashboard
-	CspRoles          []string `json:"csp_roles,omitempty"`
-	Confirmed         bool     `json:"confirmed,omitempty"`
-	PasswordReset     bool     `json:"password_reset,omitempty"`
-	SendAnnouncements bool     `json:"send_announcements,omitempty"`
-	SendScanResults   bool     `json:"send_scan_results,omitempty"`
-	SendNewPlugin     bool     `json:"send_new_plugin,omitempty"`
-	SendNewRisks      bool     `json:"send_new_risks,omitempty"`
-	AccountAdmin      bool     `json:"account_admin,omitempty"`
-	Created           string   `json:"created,omitempty"`
-	Updated           string   `json:"updated,omitempty"`
-	//Provider          string       `json:"provider,omitempty"`
-	Multiaccount bool         `json:"multiaccount,omitempty"`
-	Groups       []Group      `json:"groups,omitempty"`
-	Logins       []Login      `json:"logins"`
-	UserGroups   []UserGroups `json:"user_groups,omitempty"`
-	MfaEnabled   bool         `json:"mfa_enabled,omitempty"`
-
-	CountFailedSignin int     `json:"count_failed_signin,omitempty"`
-	LastSigninAttempt *string `json:"last_signin_attempt,omitempty"`
+	CspRoles          []string     `json:"csp_roles,omitempty"`
+	Confirmed         bool         `json:"confirmed,omitempty"`
+	PasswordReset     bool         `json:"password_reset,omitempty"`
+	SendAnnouncements bool         `json:"send_announcements,omitempty"`
+	SendScanResults   bool         `json:"send_scan_results,omitempty"`
+	SendNewPlugin     bool         `json:"send_new_plugin,omitempty"`
+	SendNewRisks      bool         `json:"send_new_risks,omitempty"`
+	AccountAdmin      bool         `json:"account_admin,omitempty"`
+	Created           string       `json:"created,omitempty"`
+	Updated           string       `json:"updated,omitempty"`
+	Provider          string       `json:"provider,omitempty"`
+	Multiaccount      bool         `json:"multiaccount,omitempty"`
+	Groups            []Group      `json:"groups,omitempty"`
+	Logins            []Login      `json:"logins"`
+	UserGroups        []UserGroups `json:"user_groups,omitempty"`
 }
 
 // UserList contains a list of UserSaas
@@ -396,7 +388,6 @@ func UpdatePayload(saas, update bool, user *FullUser) interface{} {
 		if !update {
 			i["email"] = user.BasicUser.Email
 		}
-		i["mfa_enabled"] = user.BasicUser.MfaEnabled
 	} else {
 		i["email"] = user.BasicUser.Email
 		i["first_time"] = user.BasicUser.FirstTime

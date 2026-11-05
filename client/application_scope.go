@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/pkg/errors"
@@ -25,9 +26,9 @@ type Category struct {
 }
 
 type Artifact struct {
-	Image     CommonStruct `json:"image"`
-	Function  CommonStruct `json:"function"`
-	CF        CommonStruct `json:"cf"`
+	Image    CommonStruct `json:"image"`
+	Function CommonStruct `json:"function"`
+	CF       CommonStruct `json:"cf"`
 	CodeBuild CommonStruct `json:"codebuild"`
 }
 
@@ -50,17 +51,15 @@ type CommonStruct struct {
 type Variables struct {
 	Attribute string `json:"attribute"`
 	Value     string `json:"value"`
-	Name      string `json:"name"`
+	Name 	  string `json:"name"`
 }
 
 // Get Application Scope
 func (cli *Client) GetApplicationScope(name string) (*ApplicationScope, error) {
 	var err error
 	var response ApplicationScope
-
 	cli.gorequest.Set("Authorization", "Bearer "+cli.token)
 	apiPath := fmt.Sprintf("/api/v2/access_management/scopes/%s", name)
-
 	err = cli.limiter.Wait(context.Background())
 	if err != nil {
 		return nil, err
@@ -76,11 +75,16 @@ func (cli *Client) GetApplicationScope(name string) (*ApplicationScope, error) {
 			return nil, err
 		}
 	} else {
-		var errorResponse ErrorResponse
-		err = json.Unmarshal([]byte(body), &errorResponse)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", body, err)
-			return nil, fmt.Errorf("failed getting Application Scope. status: %v. response: %v", resp.Status, body)
+			log.Printf("Failed to read response Body")
+			return nil, err
+		}
+		var errorResponse ErrorResponse
+		err = json.Unmarshal(body, &errorResponse)
+		if err != nil {
+			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", string(body), err)
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed getting Application Scope. status: %v. error message: %v", resp.Status, errorResponse.Message)
 	}
@@ -88,32 +92,36 @@ func (cli *Client) GetApplicationScope(name string) (*ApplicationScope, error) {
 		return nil, fmt.Errorf("application Scope: %s not found 404", name)
 	}
 	return &response, err
+
 }
 
 // CreateApplicationScope - creates single Khulnasoft Application Scope
 func (cli *Client) CreateApplicationScope(applicationscope *ApplicationScope) error {
-	apiPath := "/api/v2/access_management/scopes"
-	request := cli.gorequest
-
 	payload, err := json.Marshal(applicationscope)
 	if err != nil {
 		return err
 	}
-
+	request := cli.gorequest
+	apiPath := fmt.Sprintf("/api/v2/access_management/scopes")
 	err = cli.limiter.Wait(context.Background())
 	if err != nil {
 		return err
 	}
-	resp, body, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Post(cli.url + apiPath).Send(string(payload)).End()
+	resp, _, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Post(cli.url + apiPath).Send(string(payload)).End()
 	if errs != nil {
 		return errors.Wrap(getMergedError(errs), "failed creating Application Scope.")
 	}
 	if resp.StatusCode != 201 && resp.StatusCode != 204 {
-		var errorResponse ErrorResponse
-		err = json.Unmarshal([]byte(body), &errorResponse)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", body, err)
-			return fmt.Errorf("failed creating Application Scope. status: %v. response: %v", resp.Status, body)
+			log.Printf("Failed to read response Body")
+			return err
+		}
+		var errorResponse ErrorResponse
+		err = json.Unmarshal(body, &errorResponse)
+		if err != nil {
+			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", string(body), err)
+			return err
 		}
 		return fmt.Errorf("failed creating Application Scope. status: %v. error message: %v", resp.Status, errorResponse.Message)
 	}
@@ -128,21 +136,25 @@ func (cli *Client) UpdateApplicationScope(applicationscope *ApplicationScope, na
 	}
 	request := cli.gorequest
 	apiPath := fmt.Sprintf("/api/v2/access_management/scopes/%s", name)
-
 	err = cli.limiter.Wait(context.Background())
 	if err != nil {
 		return err
 	}
-	resp, body, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Put(cli.url + apiPath).Send(string(payload)).End()
+	resp, _, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Put(cli.url + apiPath).Send(string(payload)).End()
 	if errs != nil {
 		return errors.Wrap(getMergedError(errs), "failed modifying Application Scope")
 	}
-	if resp.StatusCode != 201 && resp.StatusCode != 204 && resp.StatusCode != 200 {
-		var errorResponse ErrorResponse
-		err = json.Unmarshal([]byte(body), &errorResponse)
+	if resp.StatusCode != 201 && resp.StatusCode != 204 {
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", body, err)
-			return fmt.Errorf("failed modifying Application Scope. status: %v. response: %v", resp.Status, body)
+			log.Printf("Failed to read response Body")
+			return err
+		}
+		var errorResponse ErrorResponse
+		err = json.Unmarshal(body, &errorResponse)
+		if err != nil {
+			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", string(body), err)
+			return err
 		}
 		return fmt.Errorf("failed modifying Application Scope. status: %v. error message: %v", resp.Status, errorResponse.Message)
 	}
@@ -153,21 +165,25 @@ func (cli *Client) UpdateApplicationScope(applicationscope *ApplicationScope, na
 func (cli *Client) DeleteApplicationScope(name string) error {
 	request := cli.gorequest
 	apiPath := fmt.Sprintf("/api/v2/access_management/scopes/%s", name)
-
 	err := cli.limiter.Wait(context.Background())
 	if err != nil {
 		return err
 	}
-	resp, body, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Delete(cli.url + apiPath).End()
+	resp, _, errs := request.Clone().Set("Authorization", "Bearer "+cli.token).Delete(cli.url + apiPath).End()
 	if errs != nil {
 		return errors.Wrap(getMergedError(errs), "failed deleting Application Scope")
 	}
-	if resp.StatusCode != 204 && resp.StatusCode != 200 {
-		var errorResponse ErrorResponse
-		err = json.Unmarshal([]byte(body), &errorResponse)
+	if resp.StatusCode != 204 {
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", body, err)
-			return fmt.Errorf("failed deleting Application Scope. status: %v. response: %v", resp.Status, body)
+			log.Printf("Failed to read response Body")
+			return err
+		}
+		var errorResponse ErrorResponse
+		err = json.Unmarshal(body, &errorResponse)
+		if err != nil {
+			log.Printf("Failed to Unmarshal response Body to ErrorResponse. Body: %v. error: %v", string(body), err)
+			return err
 		}
 		return fmt.Errorf("failed deleting Application Scope, status: %v. error message: %v", resp.Status, errorResponse.Message)
 	}

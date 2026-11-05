@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func TestKhulnasoftresourceAnyRegistry(t *testing.T) {
+func TestKhulnasoftresourceRegistry(t *testing.T) {
 	t.Parallel()
 	name := acctest.RandomWithPrefix("terraform-test")
 	url := "https://docker.io"
@@ -19,17 +19,13 @@ func TestKhulnasoftresourceAnyRegistry(t *testing.T) {
 	autopull := false
 	scanner_type := "any"
 	description := "Terrafrom-test"
-	option := "status"
-	value := "Connected"
-	force_ootb := false
-	force_save := false
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: CheckDestroy("khulnasoft_integration_registry.new"),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCheckKhulnasoftRegistry(name, url, rtype, username, password, autopull, scanner_type, description, option, value, force_ootb, force_save),
+				Config: testAccCheckKhulnasoftRegistry(name, url, rtype, username, password, autopull, scanner_type, description),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKhulnasoftRegistryExists("khulnasoft_integration_registry.new"),
 				),
@@ -44,7 +40,7 @@ func TestKhulnasoftresourceAnyRegistry(t *testing.T) {
 	})
 }
 
-func testAccCheckKhulnasoftRegistry(name string, url string, rtype string, username string, password string, autopull bool, scanner_type string, description string, option string, value string, force_ootb bool, force_save bool) string {
+func testAccCheckKhulnasoftRegistry(name string, url string, rtype string, username string, password string, autopull bool, scanner_type string, description string) string {
 	return fmt.Sprintf(`
 	resource "khulnasoft_integration_registry" "new" {
 		name = "%s"
@@ -55,16 +51,7 @@ func testAccCheckKhulnasoftRegistry(name string, url string, rtype string, usern
 		auto_pull = "%v"
 		scanner_type = "%s"
 		description = "%s"
-
-		options {
-			option = "%s"
-			value = "%s"
-		}
-
-		force_ootb = "%v"
-		force_save = "%v"
-
-	}`, name, url, rtype, username, password, autopull, scanner_type, description, option, value, force_ootb, force_save)
+	}`, name, url, rtype, username, password, autopull, scanner_type, description)
 
 }
 

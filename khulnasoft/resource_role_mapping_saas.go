@@ -53,30 +53,17 @@ func resourceRoleMappingSaasRead(ctx context.Context, d *schema.ResourceData, m 
 	ac := m.(*client.Client)
 
 	r, err := ac.GetRoleMappingSaas(d.Id())
-	if err != nil {
+	if err == nil {
+		d.Set("role_mapping_id", r.Id)
+		d.Set("created", r.Created)
+		d.Set("account_id", r.AccountId)
+	} else {
 		if strings.Contains(err.Error(), "404") {
 			d.SetId("")
-			return nil
+		} else {
+			return diag.FromErr(err)
 		}
-		return diag.FromErr(err)
 	}
-
-	if err := d.Set("role_mapping_id", r.Id); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set("created", r.Created); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set("account_id", r.AccountId); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set("csp_role", r.CspRole); err != nil {
-		return diag.FromErr(err)
-	}
-	if err := d.Set("saml_groups", r.SamlGroups); err != nil {
-		return diag.FromErr(err)
-	}
-
 	return nil
 }
 

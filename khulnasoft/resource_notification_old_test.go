@@ -1,6 +1,13 @@
 package khulnasoft
 
-/*
+import (
+	"fmt"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+)
+
 func TestKhulnasoftNotificationOld(t *testing.T) {
 	t.Parallel()
 	user_name := "Khulnasoft"
@@ -9,7 +16,6 @@ func TestKhulnasoftNotificationOld(t *testing.T) {
 	enabled := true
 	stype := "slack"
 	name := "Slack"
-
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -36,7 +42,7 @@ func testAccCheckNotificationOld(user_name string, channel string, webhook_url s
 		user_name = "%s"
 		channel = "%s"
 		webhook_url = "%s"
-		enabled = %v
+		enabled = "%v"
 		type = "%s"
 		name = "%s"
 	  }`, user_name, channel, webhook_url, enabled, stype, name)
@@ -58,4 +64,3 @@ func testAccCheckNotificationOldExists(n string) resource.TestCheckFunc {
 		return nil
 	}
 }
-*/

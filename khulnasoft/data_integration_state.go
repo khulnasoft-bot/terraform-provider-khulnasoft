@@ -1,17 +1,14 @@
 package khulnasoft
 
 import (
-	"context"
 	"fmt"
-
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func dataIntegrationState() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataIntegrationStateRead,
+		Read: dataIntegrationStateRead,
 		Schema: map[string]*schema.Schema{
 			"oidc_settings": {
 				Type:        schema.TypeBool,
@@ -32,7 +29,7 @@ func dataIntegrationState() *schema.Resource {
 	}
 }
 
-func dataIntegrationStateRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataIntegrationStateRead(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
 
 	iap, err := ac.GetIntegrationState()
@@ -43,7 +40,7 @@ func dataIntegrationStateRead(ctx context.Context, d *schema.ResourceData, m int
 		_, id := flattenIntegrationEnablesStateData(iap)
 		d.SetId(id)
 	} else {
-		return diag.FromErr(err)
+		return err
 	}
 	return nil
 }

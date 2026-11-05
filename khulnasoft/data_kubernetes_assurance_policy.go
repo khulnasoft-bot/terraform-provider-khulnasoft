@@ -69,10 +69,6 @@ func dataKubernetesAssurancePolicy() *schema.Resource {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
-			"category": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"custom_checks_enabled": {
 				Type:        schema.TypeBool,
 				Description: "Indicates if scanning should include custom checks.",
@@ -517,19 +513,6 @@ func dataKubernetesAssurancePolicy() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
-			"ignore_base_image_vln": {
-				Type:        schema.TypeBool,
-				Description: "",
-				Computed:    true,
-			}, //bool
-			"ignored_sensitive_resources": {
-				Type:        schema.TypeList,
-				Description: "",
-				Computed:    true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
 			"application_scopes": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -646,38 +629,6 @@ func dataKubernetesAssurancePolicy() *schema.Resource {
 				Description: "Indicates that policy should ignore cases that do not have a known fix.",
 				Computed:    true,
 			},
-			"aggregated_vulnerability": {
-				Type:        schema.TypeList,
-				Description: "Aggregated vulnerability information.",
-				Computed:    true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"enabled": {
-							Type:        schema.TypeBool,
-							Computed:    true,
-							Description: "Indicates that the control is enabled",
-						},
-						"score_range": {
-							Type:     schema.TypeList,
-							Computed: true,
-							Elem: &schema.Schema{
-								Type: schema.TypeFloat,
-							},
-							Description: "Indicates score range for vuln score eg [5.5, 6.0]",
-						},
-						"custom_severity_enabled": {
-							Type:        schema.TypeBool,
-							Computed:    true,
-							Description: "Indicates to consider custom severity during control evaluation",
-						},
-						"severity": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "Max severity to be allowed in the image",
-						},
-					},
-				},
-			}, // list
 		},
 	}
 }
@@ -747,12 +698,8 @@ func dataKubernetesAssurancePolicyRead(ctx context.Context, d *schema.ResourceDa
 		d.Set("enforce_after_days", iap.EnforceAfterDays)
 		d.Set("ignore_recently_published_vln", iap.IgnoreRecentlyPublishedVln)
 		d.Set("ignore_recently_published_vln_period", iap.IgnoreRecentlyPublishedVlnPeriod)
-		d.Set("ignore_recently_published_fix_vln", iap.IgnoreRecentlyPublishedFixVln)
-		d.Set("ignore_recently_published_fix_vln_period", iap.IgnoreRecentlyPublishedFixVlnPeriod)
 		d.Set("ignore_risk_resources_enabled", iap.IgnoreRiskResourcesEnabled)
 		d.Set("ignored_risk_resources", iap.IgnoredRiskResources)
-		d.Set("ignore_base_image_vln", iap.IgnoreBaseImageVln)
-		d.Set("ignored_sensitive_resources", iap.IgnoredSensitiveResources)
 		d.Set("application_scopes", iap.ApplicationScopes)
 		d.Set("auto_scan_enabled", iap.AutoScanEnabled)
 		d.Set("auto_scan_configured", iap.AutoScanConfigured)
@@ -768,8 +715,6 @@ func dataKubernetesAssurancePolicyRead(ctx context.Context, d *schema.ResourceDa
 		d.Set("malware_action", iap.MalwareAction)
 		d.Set("partial_results_image_fail", iap.PartialResultsImageFail)
 		d.Set("maximum_score_exclude_no_fix", iap.MaximumScoreExcludeNoFix)
-		d.Set("category", iap.Category)
-		d.Set("aggregated_vulnerability", flattenAggregatedVulnerability(iap.AggregatedVulnerability))
 		d.SetId(name)
 	} else {
 		return diag.FromErr(err)

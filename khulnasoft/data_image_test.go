@@ -19,8 +19,6 @@ var imageData = client.Image{
 func TestDataSourceKhulnasoftImage(t *testing.T) {
 	t.Parallel()
 	rootRef := imageDataRef("test")
-	option := "status"
-	value := "Connected"
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			testAccPreCheck(t)
@@ -28,7 +26,7 @@ func TestDataSourceKhulnasoftImage(t *testing.T) {
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: getImageDataSource(&imageData, option, value),
+				Config: getImageDataSource(&imageData),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(rootRef, "registry", imageData.Registry),
 					resource.TestCheckResourceAttr(rootRef, "registry_type", "HUB"),
@@ -37,6 +35,7 @@ func TestDataSourceKhulnasoftImage(t *testing.T) {
 					resource.TestCheckResourceAttrSet(rootRef, "scan_status"),
 					resource.TestCheckResourceAttrSet(rootRef, "disallowed"),
 					resource.TestCheckResourceAttrSet(rootRef, "scan_date"),
+					resource.TestCheckResourceAttr(rootRef, "scan_error", ""),
 					resource.TestCheckResourceAttrSet(rootRef, "critical_vulnerabilities"),
 					resource.TestCheckResourceAttrSet(rootRef, "high_vulnerabilities"),
 					resource.TestCheckResourceAttrSet(rootRef, "medium_vulnerabilities"),
@@ -55,8 +54,8 @@ func imageDataRef(name string) string {
 	return fmt.Sprintf("data.khulnasoft_image.%s", name)
 }
 
-func getImageDataSource(image *client.Image, option, value string) string {
-	return getRegistry(image.Registry, option, value) + fmt.Sprintf(`
+func getImageDataSource(image *client.Image) string {
+	return getRegistry(image.Registry) + fmt.Sprintf(`
 	resource "khulnasoft_image" "test" {
 		registry = khulnasoft_integration_registry.demo.id
 		repository = "%s"

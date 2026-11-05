@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     khulnasoft = {
-      //      version = "0.15.0"
+      //      version = "0.8.30"
       source = "khulnasoft/khulnasoft"
     }
   }
@@ -9,7 +9,7 @@ terraform {
 
 provider "khulnasoft" {
   username = "admin"
-  khulnasoft_url = "https://khulnasofturl.com"
+  khulnasoft_url = "https://khulnasoft.com"
   password = "@password"
 }
 
@@ -119,6 +119,14 @@ data "khulnasoft_function_assurance_policy" "default-fap" {
 
 output "function-assurance" {
   value = data.khulnasoft_function_assurance_policy.default-fap
+}
+
+data "khulnasoft_kubernetes_assurance_policy" "default-kap" {
+  name = "Default"
+}
+
+output "kubernetes-assurance" {
+  value = data.khulnasoft_kubernetes_assurance_policy.default-kap
 }
 
 data "khulnasoft_application_scope" "default" {

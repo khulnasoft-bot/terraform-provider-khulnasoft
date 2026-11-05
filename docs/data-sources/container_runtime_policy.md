@@ -38,6 +38,7 @@ output "container_runtime_policy_details" {
 - `file_block` (Block List, Max: 1) (see [below for nested schema](#nestedblock--file_block))
 - `file_integrity_monitoring` (Block List) Configuration for file integrity monitoring. (see [below for nested schema](#nestedblock--file_integrity_monitoring))
 - `limit_container_privileges` (Block List) Container privileges configuration. (see [below for nested schema](#nestedblock--limit_container_privileges))
+- `malware_scan_options` (Block List, Max: 1) Configuration for Real-Time Malware Protection. (see [below for nested schema](#nestedblock--malware_scan_options))
 - `port_block` (Block List, Max: 1) (see [below for nested schema](#nestedblock--port_block))
 - `readonly_files` (Block List, Max: 1) (see [below for nested schema](#nestedblock--readonly_files))
 - `restricted_volumes` (Block List) Restricted volumes configuration. (see [below for nested schema](#nestedblock--restricted_volumes))
@@ -47,7 +48,6 @@ output "container_runtime_policy_details" {
 - `application_scopes` (List of String) Indicates the application scope of the service.
 - `audit_all_network_activity` (Boolean) If true, all network activity will be audited.
 - `audit_all_processes_activity` (Boolean) If true, all process activity will be audited.
-- `audit_brute_force_login` (Boolean) Detects brute force login attempts
 - `audit_full_command_arguments` (Boolean) If true, full command arguments will be audited.
 - `author` (String) Username of the account that created the service.
 - `block_access_host_network` (Boolean) If true, prevent containers from running with access to host network.
@@ -75,52 +75,25 @@ output "container_runtime_policy_details" {
 - `blocked_packages` (List of String) Prevent containers from reading, writing, or executing all files in the list of packages.
 - `blocked_volumes` (List of String) List of volumes that are prevented from being mounted in the containers.
 - `container_exec_allowed_processes` (List of String) List of processes that will be allowed.
-- `cve` (String)
-- `default_security_profile` (String)
 - `description` (String) The description of the container runtime policy
-- `digest` (String)
-- `drift_prevention` (List of Object) Drift prevention configuration. (see [below for nested schema](#nestedatt--drift_prevention))
-- `enable_crypto_mining_dns` (Boolean)
 - `enable_drift_prevention` (Boolean) If true, executables that are not in the original image is prevented from running.
-- `enable_fork_guard` (Boolean, **Deprecated**) Fork Guard is no longer supported for container runtime policies. This attribute will be removed in a future version.
-- `enable_ip_reputation` (Boolean)
+- `enable_fork_guard` (Boolean) If true, fork bombs are prevented in the containers.
 - `enable_ip_reputation_security` (Boolean) If true, detect and prevent communication from containers to IP addresses known to have a bad reputation.
 - `enable_port_scan_detection` (Boolean) If true, detects port scanning behavior in the container.
-- `enable_port_scan_protection` (Boolean)
 - `enabled` (Boolean) Indicates if the runtime policy is enabled or not.
 - `enforce` (Boolean) Indicates that policy should effect container execution (not just for audit).
 - `enforce_after_days` (Number) Indicates the number of days after which the runtime policy will be changed to enforce mode.
-- `enforce_scheduler_added_on` (Number)
 - `exceptional_readonly_files_and_directories` (List of String) List of files and directories to be excluded from the read-only list.
-- `exclude_application_scopes` (List of String) List of excluded application scopes.
 - `exec_lockdown_white_list` (List of String) Specify processes that will be allowed
-- `failed_kubernetes_checks` (List of Object) Failed Kubernetes checks configuration. (see [below for nested schema](#nestedatt--failed_kubernetes_checks))
-- `fork_guard_process_limit` (Number, **Deprecated**) Fork Guard is no longer supported for container runtime policies. This attribute will be removed in a future version.
+- `fork_guard_process_limit` (Number) Process limit for the fork guard.
 - `id` (String) The ID of this resource.
-- `image_name` (String)
-- `is_audit_checked` (Boolean)
-- `is_auto_generated` (Boolean)
-- `is_ootb_policy` (Boolean)
 - `limit_new_privileges` (Boolean) If true, prevents the container from obtaining new privileges at runtime. (only enabled in enforce mode)
-- `malware_scan_options` (List of Object) Configuration for Real-Time Malware Protection. (see [below for nested schema](#nestedatt--malware_scan_options))
 - `monitor_system_time_changes` (Boolean) If true, system time changes will be monitored.
-- `permission` (String)
 - `readonly_files_and_directories` (List of String) List of files and directories to be restricted as read-only
-- `registry` (String)
-- `repo_name` (String)
-- `resource_name` (String)
-- `resource_type` (String)
 - `reverse_shell_allowed_ips` (List of String) List of IPs/ CIDRs that will be allowed
 - `reverse_shell_allowed_processes` (List of String) List of processes that will be allowed
-- `runtime_mode` (Number)
-- `runtime_type` (String)
 - `scope_expression` (String) Logical expression of how to compute the dependency of the scope variables.
 - `scope_variables` (List of Object) List of scope attributes. (see [below for nested schema](#nestedatt--scope_variables))
-- `secure_ai_discovery` (List of Object) Configuration for Secure AI discovery. (see [below for nested schema](#nestedatt--secure_ai_discovery))
-- `secure_ai_protection` (List of Object) Configuration for Secure AI protection. (see [below for nested schema](#nestedatt--secure_ai_protection))
-- `secure_ai_unauthorized_models` (List of Object) Configuration for Secure AI unauthorized models detection. (see [below for nested schema](#nestedatt--secure_ai_unauthorized_models))
-- `type` (String)
-- `vpatch_version` (String)
 
 <a id="nestedblock--allowed_executables"></a>
 ### Nested Schema for `allowed_executables`
@@ -219,6 +192,18 @@ Optional:
 - `utsmode` (Boolean) Whether to limit UTS-related capabilities.
 
 
+<a id="nestedblock--malware_scan_options"></a>
+### Nested Schema for `malware_scan_options`
+
+Optional:
+
+- `action` (String) Set Action, Defaults to 'Alert' when empty
+- `enabled` (Boolean) Defines if enabled or not
+- `exclude_directories` (List of String) List of registry paths to be excluded from being protected.
+- `exclude_processes` (List of String) List of registry processes to be excluded from being protected.
+- `include_directories` (List of String) List of registry paths to be excluded from being protected.
+
+
 <a id="nestedblock--port_block"></a>
 ### Nested Schema for `port_block`
 
@@ -252,39 +237,6 @@ Optional:
 - `volumes` (List of String) List of restricted volumes.
 
 
-<a id="nestedatt--drift_prevention"></a>
-### Nested Schema for `drift_prevention`
-
-Read-Only:
-
-- `enabled` (Boolean)
-- `exec_lockdown` (Boolean)
-- `exec_lockdown_white_list` (List of String)
-- `image_lockdown` (Boolean)
-
-
-<a id="nestedatt--failed_kubernetes_checks"></a>
-### Nested Schema for `failed_kubernetes_checks`
-
-Read-Only:
-
-- `enabled` (Boolean)
-- `failed_checks` (List of String)
-
-
-<a id="nestedatt--malware_scan_options"></a>
-### Nested Schema for `malware_scan_options`
-
-Read-Only:
-
-- `action` (String)
-- `enabled` (Boolean)
-- `exclude_directories` (List of String)
-- `exclude_processes` (List of String)
-- `file_forensic_collection` (Boolean)
-- `include_directories` (List of String)
-
-
 <a id="nestedatt--scope_variables"></a>
 ### Nested Schema for `scope_variables`
 
@@ -293,31 +245,5 @@ Read-Only:
 - `attribute` (String)
 - `name` (String)
 - `value` (String)
-
-
-<a id="nestedatt--secure_ai_discovery"></a>
-### Nested Schema for `secure_ai_discovery`
-
-Read-Only:
-
-- `enabled` (Boolean) If true, Secure AI discovery is enabled.
-- `ignore_list` (List of String) List of service@model entries to ignore.
-
-
-<a id="nestedatt--secure_ai_protection"></a>
-### Nested Schema for `secure_ai_protection`
-
-Read-Only:
-
-- `enabled` (Boolean) If true, Secure AI protection is enabled.
-
-
-<a id="nestedatt--secure_ai_unauthorized_models"></a>
-### Nested Schema for `secure_ai_unauthorized_models`
-
-Read-Only:
-
-- `enabled` (Boolean) If true, unauthorized models detection is enabled.
-- `unauthorized_list` (List of String) List of service@model entries considered unauthorized.
 
 

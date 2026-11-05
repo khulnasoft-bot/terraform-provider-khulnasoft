@@ -11,10 +11,9 @@ import (
 
 // Group represents a local Khulnasoft Group
 type Group struct {
-	Id         int    `json:"id"`
-	Name       string `json:"name,omitempty"`
-	Created    string `json:"created,omitempty"`
-	GroupAdmin bool   `json:"group_admin,omitempty"`
+	Id      int    `json:"id"`
+	Name    string `json:"name,omitempty"`
+	Created string `json:"created,omitempty"`
 }
 
 // GroupList contains a list of Group
