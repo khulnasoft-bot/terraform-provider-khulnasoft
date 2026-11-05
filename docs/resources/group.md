@@ -17,7 +17,7 @@ The Groups created must have at least one Role that is already present within Kh
 
 ```terraform
 resource "khulnasoft_group" "group" {
-  name = "IacGroup"
+    name = "IacGroup"
 }
 ```
 

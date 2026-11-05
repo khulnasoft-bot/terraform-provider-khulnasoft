@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 )
 
 const (
-	apiPathPrefix    = "/api/v2/access_management/permissions"
+	apiPathPrefix    = "/api/access_mgmt/permissions"
 	waitDuration     = 2 * time.Second
 	statusOK         = 200
 	statusCreated    = 201
@@ -20,9 +19,8 @@ const (
 )
 
 type CustomerAction struct {
-	Name           string `json:"name"`
-	Action         string `json:"action"`
-	HasWriteAccess bool   `json:"has_write_access"`
+	Name         string   `json:"name"`
+	Dependencies []string `json:"dependencies,omitempty"`
 }
 
 type CustomerModule struct {
@@ -30,14 +28,8 @@ type CustomerModule struct {
 	Actions []CustomerAction `json:"actions"`
 }
 
-type CustomerDependency struct {
-	Name        string            `json:"name"`
-	DependentOn map[string]string `json:"dependent_on"`
-}
-
 type CustomerModules struct {
-	Modules      []CustomerModule     `json:"groups"`
-	Dependencies []CustomerDependency `json:"dependencies"`
+	Modules []CustomerModule `json:"modules"`
 }
 
 type PermissionSetSaas struct {
@@ -53,18 +45,10 @@ func unmarshalResponse(body string, target interface{}) error {
 	return nil
 }
 
-func normalizePermissionSetActions(actions []string) []string {
-	normalized := make([]string, len(actions))
-	for i, action := range actions {
-		normalized[i] = strings.TrimPrefix(action, "csp.")
-	}
-	return normalized
-}
-
 func (cli *Client) GetPermissionSetSaas(name string) (*PermissionSetSaas, error) {
 
 	var response PermissionSetSaas
-	fullURL := fmt.Sprintf("%s%s/%s", cli.url, apiPathPrefix, name)
+	fullURL := fmt.Sprintf("%s%s/%s", cli.saasUrl, apiPathPrefix, name)
 
 	if err := cli.limiter.Wait(context.Background()); err != nil {
 		return nil, err
@@ -83,7 +67,6 @@ func (cli *Client) GetPermissionSetSaas(name string) (*PermissionSetSaas, error)
 		if err := unmarshalResponse(body, &response); err != nil {
 			return nil, err
 		}
-		response.Actions = normalizePermissionSetActions(response.Actions)
 		return &response, nil
 	}
 
@@ -97,7 +80,7 @@ func (cli *Client) CreatePermissionSetSaas(permissionSet *PermissionSetSaas) err
 		return err
 	}
 
-	fullURL := cli.url + apiPathPrefix
+	fullURL := cli.saasUrl + apiPathPrefix
 
 	if err := cli.limiter.Wait(context.Background()); err != nil {
 		return err
@@ -128,7 +111,7 @@ func (cli *Client) UpdatePermissionSetSaas(permissionSet *PermissionSetSaas) err
 		return err
 	}
 
-	fullURL := fmt.Sprintf("%s%s/%s", cli.url, apiPathPrefix, permissionSet.Name)
+	fullURL := cli.saasUrl + apiPathPrefix
 
 	if err := cli.limiter.Wait(context.Background()); err != nil {
 		return err
@@ -153,7 +136,7 @@ func (cli *Client) UpdatePermissionSetSaas(permissionSet *PermissionSetSaas) err
 
 func (cli *Client) DeletePermissionSetSaas(name string) error {
 
-	fullURL := fmt.Sprintf("%s%s/%s", cli.url, apiPathPrefix, name)
+	fullURL := fmt.Sprintf("%s%s/%s", cli.saasUrl, apiPathPrefix, name)
 
 	if err := cli.limiter.Wait(context.Background()); err != nil {
 		return err
@@ -204,7 +187,7 @@ func (cli *Client) GetPermissionSetActions() (*CustomerModules, error) {
 
 func (cli *Client) GetPermissionSetsSaas() ([]PermissionSetSaas, error) {
 
-	fullURL := cli.url + apiPathPrefix
+	fullURL := cli.saasUrl + apiPathPrefix
 
 	if err := cli.limiter.Wait(context.Background()); err != nil {
 		return nil, err
@@ -219,21 +202,18 @@ func (cli *Client) GetPermissionSetsSaas() ([]PermissionSetSaas, error) {
 		return nil, errors.Wrap(getMergedError(errs), "failed listing SaaS PermissionSets")
 	}
 
-	if resp.StatusCode == statusOK {
-		var response struct {
-			Items    []PermissionSetSaas `json:"result"`
-			Page     int                 `json:"page"`
-			PageSize int                 `json:"pagesize"`
-			Count    int                 `json:"count"`
-		}
-		if err := unmarshalResponse(body, &response); err != nil {
-			return nil, err
-		}
-		for i := range response.Items {
-			response.Items[i].Actions = normalizePermissionSetActions(response.Items[i].Actions)
-		}
-		return response.Items, nil
-	}
+    if resp.StatusCode == statusOK {
+        var response struct {
+            Items []PermissionSetSaas `json:"permissions"`
+            Page  int                 `json:"page"`
+            Size  int                 `json:"size"`
+            Total int                 `json:"total"`
+        }
+        if err := unmarshalResponse(body, &response); err != nil {
+            return nil, err
+        }
+        return response.Items, nil
+    }
 
-	return nil, fmt.Errorf("failed listing SaaS PermissionSets: %s", resp.Status)
+    return nil, fmt.Errorf("failed listing SaaS PermissionSets: %s", resp.Status)
 }

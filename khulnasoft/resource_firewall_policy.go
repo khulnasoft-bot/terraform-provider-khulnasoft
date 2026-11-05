@@ -57,11 +57,10 @@ func resourceFirewallPolicy() *schema.Resource {
 							Required:    true,
 						},
 						"resource": {
-							Type:             schema.TypeString,
-							Description:      "Information of the resource. For anywhere rules, the provider uses 0.0.0.0/0.",
-							Computed:         true,
-							Optional:         true,
-							DiffSuppressFunc: suppressEquivalentAnywhereNetworkResourceDiff,
+							Type:        schema.TypeString,
+							Description: "Information of the resource.",
+							Computed:    true,
+							Optional:    true,
 						},
 						"resource_type": {
 							Type:        schema.TypeString,
@@ -99,11 +98,10 @@ func resourceFirewallPolicy() *schema.Resource {
 							Description: "Range of ports affected by firewall.",
 						},
 						"resource": {
-							Type:             schema.TypeString,
-							Description:      "Information of the resource. For anywhere rules, the provider uses 0.0.0.0/0.",
-							Optional:         true,
-							Computed:         true,
-							DiffSuppressFunc: suppressEquivalentAnywhereNetworkResourceDiff,
+							Type:        schema.TypeString,
+							Description: "Information of the resource.",
+							Optional:    true,
+							Computed:    true,
 						},
 						"resource_type": {
 							Type:        schema.TypeString,
@@ -234,13 +232,15 @@ func expandFirewallPolicy(d *schema.ResourceData) client.FirewallPolicy {
 		networkArr := make([]client.Networks, len(inboundNetworksList))
 		for i, inboundNetworkData := range inboundNetworksList {
 			inboundNetwork := inboundNetworkData.(map[string]interface{})
-			resourceType := inboundNetwork["resource_type"].(string)
-			resource, _ := inboundNetwork["resource"].(string)
 			network := client.Networks{
 				Allow:        inboundNetwork["allow"].(bool),
 				PortRange:    inboundNetwork["port_range"].(string),
-				ResourceType: resourceType,
-				Resource:     normalizeNetworkResource(resourceType, resource),
+				ResourceType: inboundNetwork["resource_type"].(string),
+			}
+
+			res, ok := inboundNetwork["resource"]
+			if ok {
+				network.Resource = res.(string)
 			}
 
 			networkArr[i] = network
@@ -270,13 +270,15 @@ func expandFirewallPolicy(d *schema.ResourceData) client.FirewallPolicy {
 		networkArr := make([]client.Networks, len(outboundNetworksList))
 		for i, outboundNetworkData := range outboundNetworksList {
 			outboundNetwork := outboundNetworkData.(map[string]interface{})
-			resourceType := outboundNetwork["resource_type"].(string)
-			resource, _ := outboundNetwork["resource"].(string)
 			network := client.Networks{
 				Allow:        outboundNetwork["allow"].(bool),
 				PortRange:    outboundNetwork["port_range"].(string),
-				ResourceType: resourceType,
-				Resource:     normalizeNetworkResource(resourceType, resource),
+				ResourceType: outboundNetwork["resource_type"].(string),
+			}
+
+			res, ok := outboundNetwork["resource"]
+			if ok {
+				network.Resource = res.(string)
 			}
 
 			networkArr[i] = network

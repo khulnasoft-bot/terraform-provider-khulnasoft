@@ -14,56 +14,46 @@ description: |-
 
 ```terraform
 resource "khulnasoft_host_runtime_policy" "host_runtime_policy" {
-  name        = "host_runtime_policy"
+  name = "host_runtime_policy"
   description = "host_runtime_policy"
-
-  scope {
-    expression = "v1 && v2 || v3"
-
-    variables {
-      attribute = "khulnasoft.hostgroup"
-      value     = "production"
-    }
-    variables {
-      attribute = "cloud.awsaccount"
-      value     = "xxxxxxxxx"
-    }
-    variables {
-      attribute = "os.hostname"
-      name      = "name"
-      value     = "10.0.0.1"
-    }
+  scope_variables {
+    attribute = "kubernetes.cluster"
+    value = "default"
   }
-
+  scope_variables {
+      attribute = "kubernetes.label"
+      name = "app"
+      value = "khulnasoft"
+  }
 
   application_scopes = [
     "Global",
   ]
-  enabled                     = true
-  enforce                     = false
+  enabled = true
+  enforce = false
   block_cryptocurrency_mining = true
-  audit_brute_force_login     = true
+  audit_brute_force_login = true
   blocked_files = [
     "blocked",
   ]
   file_integrity_monitoring {
-    enabled                               = true
-    monitored_files_read                  = true
-    monitored_files_modify                = true
-    monitored_files_delete                = true
-    monitored_files_attributes            = false
-    monitored_files                       = ["paths"]
-    exceptional_monitored_files           = ["expaths"]
-    monitored_files_processes             = ["process"]
-    exceptional_monitored_files_processes = ["exprocess"]
-    monitored_files_users                 = ["user"]
-    exceptional_monitored_files_users     = ["expuser"]
+    monitor_create      = true
+    monitor_read        = true
+    monitor_modify      = true
+    monitor_delete      = true
+    monitor_attributes  = true
+    monitored_paths     = ["paths"]
+    excluded_paths      = ["expaths"]
+    monitored_processes = ["process"]
+    excluded_processes  = ["exprocess"]
+    monitored_users     = ["user"]
+    excluded_users      = ["expuser"]
   }
-
-  audit_full_command_arguments       = true
+  audit_all_os_user_activity    = true
+  audit_full_command_arguments  = true
   audit_host_successful_login_events = true
-  audit_host_failed_login_events     = true
-  audit_user_account_management      = true
+  audit_host_failed_login_events = true
+  audit_user_account_management = true
   os_users_allowed = [
     "user1",
   ]
@@ -76,25 +66,12 @@ resource "khulnasoft_host_runtime_policy" "host_runtime_policy" {
   os_groups_blocked = [
     "group2",
   ]
-
-  monitor_system_time_changes  = true
-  monitor_windows_services     = true
+  package_block = [
+    "package1"
+  ]
+  monitor_system_time_changes = true
+  monitor_windows_services    = true
   monitor_system_log_integrity = true
-
-  # Secure AI controls
-  secure_ai_discovery {
-    enabled     = true
-    ignore_list = ["openai@gpt-4"]
-  }
-
-  secure_ai_protection {
-    enabled = true
-  }
-
-  secure_ai_unauthorized_models {
-    enabled           = true
-    unauthorized_list = ["openai@gpt-3"]
-  }
 }
 ```
 
@@ -181,9 +158,6 @@ resource "khulnasoft_host_runtime_policy" "host_runtime_policy" {
 - `scope` (Block List) Scope configuration. (see [below for nested schema](#nestedblock--scope))
 - `scope_expression` (String) Logical expression of how to compute the dependency of the scope variables.
 - `scope_variables` (Block List) List of scope attributes. (see [below for nested schema](#nestedblock--scope_variables))
-- `secure_ai_discovery` (Block List, Max: 1) Configuration for Secure AI discovery. (see [below for nested schema](#nestedblock--secure_ai_discovery))
-- `secure_ai_protection` (Block List, Max: 1) Configuration for Secure AI protection. (see [below for nested schema](#nestedblock--secure_ai_protection))
-- `secure_ai_unauthorized_models` (Block List, Max: 1) Configuration for Secure AI unauthorized models detection. (see [below for nested schema](#nestedblock--secure_ai_unauthorized_models))
 - `system_integrity_protection` (Block List, Max: 1) (see [below for nested schema](#nestedblock--system_integrity_protection))
 - `tripwire` (Block List, Max: 1) (see [below for nested schema](#nestedblock--tripwire))
 - `type` (String)
@@ -377,7 +351,6 @@ Optional:
 - `enabled` (Boolean) Defines if enabled or not
 - `exclude_directories` (List of String) List of registry paths to be excluded from being protected.
 - `exclude_processes` (List of String) List of registry processes to be excluded from being protected.
-- `file_forensic_collection` (Boolean) Whether to enable file forensic collection.
 - `include_directories` (List of String) List of registry paths to be excluded from being protected.
 
 
@@ -488,10 +461,6 @@ Required:
 - `attribute` (String) Variable attribute.
 - `value` (String) Variable value.
 
-Optional:
-
-- `name` (String)
-
 
 
 <a id="nestedblock--scope_variables"></a>
@@ -505,32 +474,6 @@ Required:
 Optional:
 
 - `name` (String) Name assigned to the attribute.
-
-
-<a id="nestedblock--secure_ai_discovery"></a>
-### Nested Schema for `secure_ai_discovery`
-
-Optional:
-
-- `enabled` (Boolean) If true, Secure AI discovery is enabled.
-- `ignore_list` (List of String) List of service@model entries to ignore (e.g. `openai@gpt-4`, `openai@*`).
-
-
-<a id="nestedblock--secure_ai_protection"></a>
-### Nested Schema for `secure_ai_protection`
-
-Optional:
-
-- `enabled` (Boolean) If true, Secure AI protection is enabled.
-
-
-<a id="nestedblock--secure_ai_unauthorized_models"></a>
-### Nested Schema for `secure_ai_unauthorized_models`
-
-Optional:
-
-- `enabled` (Boolean) If true, unauthorized models detection is enabled.
-- `unauthorized_list` (List of String) List of service@model entries considered unauthorized (e.g. `openai@gpt-4`, `openai@*`).
 
 
 <a id="nestedblock--system_integrity_protection"></a>

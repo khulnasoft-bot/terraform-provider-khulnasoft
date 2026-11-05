@@ -1,22 +1,19 @@
 package khulnasoft
 
 import (
-	"context"
 	"fmt"
-	"strings"
-
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"strings"
 )
 
 func resourceKubernetesAssurancePolicy() *schema.Resource {
 	return &schema.Resource{
-		Description:   "Kubernetes Assurance is responsible for checking the security of workload configurations at the pod level, with respect to your organization's security requirements.",
-		CreateContext: resourceKubernetesAssurancePolicyCreate,
-		ReadContext:   resourceKubernetesAssurancePolicyRead,
-		UpdateContext: resourceKubernetesAssurancePolicyUpdate,
-		DeleteContext: resourceKubernetesAssurancePolicyDelete,
+		Description: "Kubernetes Assurance is responsible for checking the security of workload configurations at the pod level, with respect to your organization's security requirements.",
+		Create:      resourceKubernetesAssurancePolicyCreate,
+		Read:        resourceKubernetesAssurancePolicyRead,
+		Update:      resourceKubernetesAssurancePolicyUpdate,
+		Delete:      resourceKubernetesAssurancePolicyDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -25,18 +22,8 @@ func resourceKubernetesAssurancePolicy() *schema.Resource {
 			"assurance_type": {
 				Type:        schema.TypeString,
 				Description: "What type of assurance policy is described.",
-				Required:    true,
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					s, ok := val.(string)
-					if !ok {
-						errs = append(errs, fmt.Errorf("%q must be a string, got %T", key, val))
-						return
-					}
-					if strings.ToLower(s) != "kubernetes" {
-						errs = append(errs, fmt.Errorf("%q must be \"kubernetes\" (case-insensitive), got %q", key, s))
-					}
-					return
-				},
+				Optional:    true,
+				Computed:    true,
 			},
 			"id": {
 				Type:     schema.TypeString,
@@ -69,10 +56,9 @@ func resourceKubernetesAssurancePolicy() *schema.Resource {
 				Optional:    true,
 			},
 			"cvss_severity_exclude_no_fix": {
-				Type:             schema.TypeBool,
-				Description:      "Indicates that policy should ignore cvss cases that do not have a known fix.",
-				Optional:         true,
-				DiffSuppressFunc: suppressExcludeNoFixDiff("cvss_severity_enabled"),
+				Type:        schema.TypeBool,
+				Description: "Indicates that policy should ignore cvss cases that do not have a known fix.",
+				Optional:    true,
 			},
 			"custom_severity_enabled": {
 				Type:     schema.TypeBool,
@@ -90,10 +76,6 @@ func resourceKubernetesAssurancePolicy() *schema.Resource {
 			},
 			"control_exclude_no_fix": {
 				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			"category": {
-				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"custom_checks_enabled": {
@@ -525,15 +507,6 @@ func resourceKubernetesAssurancePolicy() *schema.Resource {
 				Computed: true,
 				Optional: true,
 			},
-			"ignore_recently_published_fix_vln": {
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			"ignore_recently_published_fix_vln_period": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Computed: true,
-			},
 			"ignore_risk_resources_enabled": {
 				Type:        schema.TypeBool,
 				Description: "Indicates if risk resources are ignored.",
@@ -662,10 +635,9 @@ func resourceKubernetesAssurancePolicy() *schema.Resource {
 				Optional: true,
 			},
 			"maximum_score_exclude_no_fix": {
-				Type:             schema.TypeBool,
-				Description:      "Indicates that policy should ignore cases that do not have a known fix.",
-				Optional:         true,
-				DiffSuppressFunc: suppressExcludeNoFixDiff("maximum_score_enabled"),
+				Type:        schema.TypeBool,
+				Description: "Indicates that policy should ignore cases that do not have a known fix.",
+				Optional:    true,
 			},
 			//JSON
 			"lastupdate": {
@@ -847,62 +819,46 @@ func resourceKubernetesAssurancePolicy() *schema.Resource {
 				},
 			}, // list
 			"aggregated_vulnerability": {
-				Type:        schema.TypeList,
+				Type:        schema.TypeMap,
 				Description: "Aggregated vulnerability information.",
 				Optional:    true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"enabled": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Indicates that the control is enabled",
-						},
-						"score_range": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MinItems: 1,
-							Elem: &schema.Schema{
-								Type: schema.TypeFloat,
-							},
-							Description: "Indicates score range for vuln score eg [5.5, 6.0]",
-						},
-						"custom_severity_enabled": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Indicates to consider custom severity during control evaluation",
-						},
-						"severity": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "Max severity to be allowed in the image",
-						},
-					},
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
-			}, // list
+			},
+
+			//"aggregated_vulnerability": {
+			//	Type:        schema.TypeString,
+			//	Optional:    true,
+			//	Description: "List of aggregated vulnerabilities",
+			//	//Elem: &schema.Schema{
+			//	//	Type: schema.TypeString,
+			//	//},
+			//}, // list
 		},
 	}
 }
 
-func resourceKubernetesAssurancePolicyCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceKubernetesAssurancePolicyCreate(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "kubernetes"
 
 	iap := expandAssurancePolicy(d, assurance_type)
 	err := ac.CreateAssurancePolicy(iap, assurance_type)
 
 	if err != nil {
-		return diag.FromErr(err)
+		return err
 	}
 	d.SetId(name)
-	return resourceKubernetesAssurancePolicyRead(ctx, d, m)
+	return resourceKubernetesAssurancePolicyRead(d, m)
 
 }
 
-func resourceKubernetesAssurancePolicyUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceKubernetesAssurancePolicyUpdate(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "kubernetes"
 
 	if d.HasChanges(
 		"description",
@@ -993,33 +949,26 @@ func resourceKubernetesAssurancePolicyUpdate(ctx context.Context, d *schema.Reso
 		"exclude_application_scopes",
 		"linux_cis_enabled",
 		"openshift_hardening_enabled",
-		"windows_cis_enabled",
-		"vulnerability_score_range",
-		"ignore_risk_resources_enabled",
-		"category",
-		"ignore_recently_published_fix_vln",
-		"ignore_recently_published_fix_vln_period",
-		"aggregated_vulnerability",
 	) {
 		iap := expandAssurancePolicy(d, assurance_type)
 		err := ac.UpdateAssurancePolicy(iap, assurance_type)
 		if err == nil {
-			err1 := resourceKubernetesAssurancePolicyRead(ctx, d, m)
+			err1 := resourceKubernetesAssurancePolicyRead(d, m)
 			if err1 == nil {
 				d.SetId(name)
 			} else {
 				return err1
 			}
 		} else {
-			return diag.FromErr(err)
+			return err
 		}
 	}
 	return nil
 }
 
-func resourceKubernetesAssurancePolicyRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceKubernetesAssurancePolicyRead(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "kubernetes"
 
 	iap, err := ac.GetAssurancePolicy(d.Id(), assurance_type)
 
@@ -1028,7 +977,7 @@ func resourceKubernetesAssurancePolicyRead(ctx context.Context, d *schema.Resour
 			d.SetId("")
 			return nil
 		}
-		return diag.FromErr(err)
+		return err
 	}
 
 	//d.Set("assurance_type", iap.AssuranceType)
@@ -1082,7 +1031,7 @@ func resourceKubernetesAssurancePolicyRead(ctx context.Context, d *schema.Resour
 	d.Set("dta_enabled", iap.DtaEnabled)
 	d.Set("cves_white_list_enabled", iap.CvesWhiteListEnabled)
 	d.Set("cves_white_list", iap.CvesWhiteList)
-	d.Set("kubernetes_controls_names", iap.KubernetesControlsNames)
+	d.Set("kubernetes_controls_names", iap.KubenetesControlsNames)
 	d.Set("blacklist_permissions_enabled", iap.BlacklistPermissionsEnabled)
 	d.Set("blacklist_permissions", iap.BlacklistPermissions)
 	d.Set("enabled", iap.Enabled)
@@ -1123,26 +1072,20 @@ func resourceKubernetesAssurancePolicyRead(ctx context.Context, d *schema.Resour
 	d.Set("exclude_application_scopes", iap.ExcludeApplicationScopes)
 	d.Set("linux_cis_enabled", iap.LinuxCisEnabled)
 	d.Set("openshift_hardening_enabled", iap.OpenshiftHardeningEnabled)
-	d.Set("category", iap.Category)
-	d.Set("ignore_recently_published_fix_vln", iap.IgnoreRecentlyPublishedFixVln)
-	d.Set("ignore_recently_published_fix_vln_period", iap.IgnoreRecentlyPublishedFixVlnPeriod)
-	if _, ok := d.GetOk("aggregated_vulnerability"); ok {
-		d.Set("aggregated_vulnerability", flattenAggregatedVulnerability(iap.AggregatedVulnerability))
-	}
 
 	return nil
 }
 
-func resourceKubernetesAssurancePolicyDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceKubernetesAssurancePolicyDelete(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "kubernetes"
 	err := ac.DeleteAssurancePolicy(name, assurance_type)
 
 	if err == nil {
 		d.SetId("")
 	} else {
-		return diag.FromErr(err)
+		return err
 	}
 	return nil
 }

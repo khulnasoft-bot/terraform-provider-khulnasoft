@@ -1,22 +1,19 @@
 package khulnasoft
 
 import (
-	"context"
 	"fmt"
-	"strings"
-
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"strings"
 )
 
 func resourceHostAssurancePolicy() *schema.Resource {
 	return &schema.Resource{
-		Description:   "Host Assurance is a subsystem of Khulnasoft. It is responsible for:\n Scans host VMs and Kubernetes nodes' file system for security issues, vulnerabilities in OS and programming language packages, open-source licenses, and compliance with CIS benchmarks.\nEvaluates scan findings according to defined Host Assurance Policies.\nDetermines host compliance based on these policies.\nGenerates an audit event for host assurance failure.  ",
-		CreateContext: resourceHostAssurancePolicyCreate,
-		ReadContext:   resourceHostAssurancePolicyRead,
-		UpdateContext: resourceHostAssurancePolicyUpdate,
-		DeleteContext: resourceHostAssurancePolicyDelete,
+		Description: "Host Assurance is a subsystem of Khulnasoft. It is responsible for:\n Scans host VMs and Kubernetes nodes' file system for security issues, vulnerabilities in OS and programming language packages, open-source licenses, and compliance with CIS benchmarks.\nEvaluates scan findings according to defined Host Assurance Policies.\nDetermines host compliance based on these policies.\nGenerates an audit event for host assurance failure.  ",
+		Create:      resourceHostAssurancePolicyCreate,
+		Read:        resourceHostAssurancePolicyRead,
+		Update:      resourceHostAssurancePolicyUpdate,
+		Delete:      resourceHostAssurancePolicyDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -24,18 +21,8 @@ func resourceHostAssurancePolicy() *schema.Resource {
 			"assurance_type": {
 				Type:        schema.TypeString,
 				Description: "What type of assurance policy is described.",
-				Required:    true,
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					s, ok := val.(string)
-					if !ok {
-						errs = append(errs, fmt.Errorf("%q must be a string, got %T", key, val))
-						return
-					}
-					if strings.ToLower(s) != "host" {
-						errs = append(errs, fmt.Errorf("%q must be \"host\" (case-insensitive), got %q", key, s))
-					}
-					return
-				},
+				Optional:    true,
+				Computed:    true,
 			},
 			"id": {
 				Type:     schema.TypeString,
@@ -68,10 +55,9 @@ func resourceHostAssurancePolicy() *schema.Resource {
 				Optional:    true,
 			},
 			"cvss_severity_exclude_no_fix": {
-				Type:             schema.TypeBool,
-				Description:      "Indicates that policy should ignore cvss cases that do not have a known fix.",
-				Optional:         true,
-				DiffSuppressFunc: suppressExcludeNoFixDiff("cvss_severity_enabled"),
+				Type:        schema.TypeBool,
+				Description: "Indicates that policy should ignore cvss cases that do not have a known fix.",
+				Optional:    true,
 			},
 			"custom_severity_enabled": {
 				Type:     schema.TypeBool,
@@ -512,15 +498,6 @@ func resourceHostAssurancePolicy() *schema.Resource {
 				Computed: true,
 				Optional: true,
 			},
-			"ignore_recently_published_fix_vln": {
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			"ignore_recently_published_fix_vln_period": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Computed: true,
-			},
 			"ignore_risk_resources_enabled": {
 				Type:        schema.TypeBool,
 				Description: "Indicates if risk resources are ignored.",
@@ -649,10 +626,9 @@ func resourceHostAssurancePolicy() *schema.Resource {
 				Optional: true,
 			},
 			"maximum_score_exclude_no_fix": {
-				Type:             schema.TypeBool,
-				Description:      "Indicates that policy should ignore cases that do not have a known fix.",
-				Optional:         true,
-				DiffSuppressFunc: suppressExcludeNoFixDiff("maximum_score_enabled"),
+				Type:        schema.TypeBool,
+				Description: "Indicates that policy should ignore cases that do not have a known fix.",
+				Optional:    true,
 			},
 			//JSON
 			"lastupdate": {
@@ -819,25 +795,25 @@ func resourceHostAssurancePolicy() *schema.Resource {
 	}
 }
 
-func resourceHostAssurancePolicyCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceHostAssurancePolicyCreate(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "host"
 
 	iap := expandAssurancePolicy(d, assurance_type)
 	err := ac.CreateAssurancePolicy(iap, assurance_type)
 
 	if err != nil {
-		return diag.FromErr(err)
+		return err
 	}
 	d.SetId(name)
-	return resourceHostAssurancePolicyRead(ctx, d, m)
+	return resourceHostAssurancePolicyRead(d, m)
 
 }
 
-func resourceHostAssurancePolicyUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceHostAssurancePolicyUpdate(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "host"
 
 	if d.HasChanges("description",
 		"registry",
@@ -893,8 +869,6 @@ func resourceHostAssurancePolicyUpdate(ctx context.Context, d *schema.ResourceDa
 		"enforce_after_days",
 		"ignore_recently_published_vln",
 		"ignore_recently_published_vln_period",
-		"ignore_recently_published_fix_vln",
-		"ignore_recently_published_fix_vln_period",
 		"ignore_risk_resources_enabled",
 		"ignored_risk_resources",
 		"application_scopes",
@@ -938,22 +912,22 @@ func resourceHostAssurancePolicyUpdate(ctx context.Context, d *schema.ResourceDa
 		iap := expandAssurancePolicy(d, assurance_type)
 		err := ac.UpdateAssurancePolicy(iap, assurance_type)
 		if err == nil {
-			errs := resourceHostAssurancePolicyRead(ctx, d, m)
-			if errs == nil {
+			err1 := resourceHostAssurancePolicyRead(d, m)
+			if err1 == nil {
 				d.SetId(iap.Name)
 			} else {
-				return errs
+				return err1
 			}
 		} else {
-			return diag.FromErr(err)
+			return err
 		}
 	}
 	return nil
 }
 
-func resourceHostAssurancePolicyRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceHostAssurancePolicyRead(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "host"
 
 	iap, err := ac.GetAssurancePolicy(d.Id(), assurance_type)
 
@@ -962,7 +936,7 @@ func resourceHostAssurancePolicyRead(ctx context.Context, d *schema.ResourceData
 			d.SetId("")
 			return nil
 		}
-		return diag.FromErr(err)
+		return err
 	}
 
 	//d.Set("assurance_type", iap.AssuranceType)
@@ -1018,12 +992,12 @@ func resourceHostAssurancePolicyRead(ctx context.Context, d *schema.ResourceData
 	d.Set("cves_white_list", iap.CvesWhiteList)
 	d.Set("blacklist_permissions_enabled", iap.BlacklistPermissionsEnabled)
 	d.Set("blacklist_permissions", iap.BlacklistPermissions)
+	d.Set("enabled", iap.Enabled)
+	d.Set("enforce", iap.Enforce)
 	d.Set("enforce_after_days", iap.EnforceAfterDays)
 	d.Set("ignore_recently_published_vln", iap.IgnoreRecentlyPublishedVln)
 	d.Set("ignore_recently_published_vln_period", iap.IgnoreRecentlyPublishedVlnPeriod)
 	d.Set("ignore_risk_resources_enabled", iap.IgnoreRiskResourcesEnabled)
-	d.Set("ignore_recently_published_fix_vln", iap.IgnoreRecentlyPublishedFixVln)
-	d.Set("ignore_recently_published_fix_vln_period", iap.IgnoreRecentlyPublishedFixVlnPeriod)
 	d.Set("ignored_risk_resources", iap.IgnoredRiskResources)
 	d.Set("application_scopes", iap.ApplicationScopes)
 	d.Set("auto_scan_enabled", iap.AutoScanEnabled)
@@ -1064,17 +1038,16 @@ func resourceHostAssurancePolicyRead(ctx context.Context, d *schema.ResourceData
 	return nil
 }
 
-func resourceHostAssurancePolicyDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceHostAssurancePolicyDelete(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := d.Get("assurance_type").(string)
-
+	assurance_type := "host"
 	err := ac.DeleteAssurancePolicy(name, assurance_type)
 
 	if err == nil {
 		d.SetId("")
 	} else {
-		return diag.FromErr(err)
+		return err
 	}
 	return nil
 }

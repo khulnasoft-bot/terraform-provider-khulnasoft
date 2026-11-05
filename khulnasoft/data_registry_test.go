@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func TestKhulnasoftRegistryAnyDatasourceAny(t *testing.T) {
+func TestKhulnasoftRegistryDatasource(t *testing.T) {
 	t.Parallel()
 	name := acctest.RandomWithPrefix("terraform-test")
 	url := "https://docker.io"
@@ -17,44 +17,36 @@ func TestKhulnasoftRegistryAnyDatasourceAny(t *testing.T) {
 	username := ""
 	password := ""
 	autopull := false
-	option := "status"
-	value := "Connected"
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCheckKhulnasoftRegistryDataSourceAny(name, url, rtype, username, password, option, value, autopull),
+				Config: testAccCheckKhulnasoftRegistryDataSource(name, url, rtype, username, password, autopull),
 				Check:  testAccCheckKhulnasoftRegistryDataSourceExists("data.khulnasoft_integration_registries.testregistries"),
 			},
 		},
 	})
 }
 
-func testAccCheckKhulnasoftRegistryDataSourceAny(name, url, rtype, username, password, option, value string, autopull bool) string {
+func testAccCheckKhulnasoftRegistryDataSource(name, url, rtype, username, password string, autopull bool) string {
 	return fmt.Sprintf(`
-	resource "khulnasoft_integration_registry" "any" {
+	resource "khulnasoft_integration_registry" "new" {
 		name = "%s"
 		url = "%s"
 		type = "%s"
 		username = "%s"
 		password = "%s"
 		auto_pull = "%v"
-
-		options {
-			option = "%s"
-			value = "%s"
-		}
-
 	}
 
 	data "khulnasoft_integration_registries" "testregistries" {
-		name = khulnasoft_integration_registry.any.name
+		name = khulnasoft_integration_registry.new.name
 		depends_on = [
-			khulnasoft_integration_registry.any
+			khulnasoft_integration_registry.new
         ]
 	}
-	`, name, url, rtype, username, password, autopull, option, value)
+	`, name, url, rtype, username, password, autopull)
 
 }
 

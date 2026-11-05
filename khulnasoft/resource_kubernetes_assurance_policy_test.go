@@ -14,32 +14,35 @@ func TestKhulnasoftKubernetesAssurancePolicy(t *testing.T) {
 	description := "Created using Terraform"
 	name := acctest.RandomWithPrefix("terraform-test")
 	application_scopes := "Global"
-	assurance_type := "kubernetes"
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: CheckDestroy("khulnasoft_kubernetes_assurance_policy.terraformiap"),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCheckKubernetesAssurancePolicy(description, name, assurance_type, application_scopes),
+				Config: testAccCheckKubernetesAssurancePolicy(description, name, application_scopes),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckKubernetesAssurancePolicyExists("khulnasoft_kubernetes_assurance_policy.terraformiap"),
 				),
+			},
+			{
+				ResourceName:      "khulnasoft_kubernetes_assurance_policy.terraformiap",
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 		},
 	})
 }
 
-func testAccCheckKubernetesAssurancePolicy(description string, name string, assurance_type, application_scopes string) string {
+func testAccCheckKubernetesAssurancePolicy(description string, name string, application_scopes string) string {
 	return fmt.Sprintf(`
 	resource "khulnasoft_kubernetes_assurance_policy" "terraformiap" {
 		description = "%s"
 		name = "%s"
-		assurance_type = "%s"
 		application_scopes = [
 			"%s"
 		]
-	}`, description, name, assurance_type, application_scopes)
+	}`, description, name, application_scopes)
 
 }
 

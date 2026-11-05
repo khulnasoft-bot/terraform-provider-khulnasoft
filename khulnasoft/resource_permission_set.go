@@ -2,10 +2,9 @@ package khulnasoft
 
 import (
 	"fmt"
-	"strings"
-
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"strings"
 )
 
 func resourcePermissionSet() *schema.Resource {
@@ -25,10 +24,10 @@ func resourcePermissionSet() *schema.Resource {
 				Computed:    true,
 			},
 			"name": {
-				Type:         schema.TypeString,
-				Description:  "The name of the Permission Set, comprised of alphanumeric characters and '-', '_', ' ', ':', '.', '@', '!', '^'.",
-				Required:     true,
-				ForceNew:     true,
+				Type:        schema.TypeString,
+				Description: "The name of the Permission Set, comprised of alphanumeric characters and '-', '_', ' ', ':', '.', '@', '!', '^'.",
+				Required:    true,
+				ForceNew:    true,
 				ValidateFunc: validateSaasResourceWarning("khulnasoft_permissions_sets", "khulnasoft_permission_set_saas"),
 			},
 			"description": {
@@ -67,6 +66,7 @@ func resourcePermissionSet() *schema.Resource {
 		},
 	}
 }
+
 
 func resourcePermissionSetCreate(d *schema.ResourceData, m interface{}) error {
 	ac := m.(*client.Client)

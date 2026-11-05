@@ -14,23 +14,19 @@ description: |-
 
 ```terraform
 resource "khulnasoft_integration_registry" "integration_registry" {
-  name                           = "integration_registry"
-  type                           = "AWS"
-  advanced_settings_cleanup      = false
-  always_pull_patterns           = [":latest", ":v1"]
-  author                         = "khulnasoft@khulnasoft.com"
-  auto_cleanup                   = false
-  auto_pull                      = true
-  auto_pull_interval             = 1
-  auto_pull_max                  = 100
-  auto_pull_rescan               = false
-  auto_pull_time                 = "08:45"
-  description                    = "Automatically discovered registry"
-  image_creation_date_condition  = "image_count"
-  permission                     = "GlobalPermission"
-  nexus_mtts_ff_enabled          = true
-  auto_pull_latest_xff_enabled   = true
-  is_architecture_system_default = false
+  name                          = "integration_registry"
+  type                          = "AWS"
+  advanced_settings_cleanup     = false
+  always_pull_patterns          = [":latest", ":v1"]
+  author                        = "khulnasoft@khulnasoft.com"
+  auto_cleanup                  = false
+  auto_pull                     = true
+  auto_pull_interval            = 1
+  auto_pull_max                 = 100
+  auto_pull_rescan              = false
+  auto_pull_time                = "08:45"
+  description                   = "Automatically discovered registry"
+  image_creation_date_condition = "image_count"
 
   options {
     option = "ARNRole"
@@ -53,35 +49,19 @@ resource "khulnasoft_integration_registry" "integration_registry" {
   pull_image_count            = 3
   pull_image_tag_pattern      = [":Latest", ":latest"]
   pull_repo_patterns_excluded = [":xyz", ":onlytest"]
-  pull_repo_patterns          = [""]
-  pull_tags_pattern           = [""]
-  pull_max_tags               = 1
 
-  url                = "us-east-1"
-  scanner_name       = []
-  scanner_type       = "any"
-  scanner_group_name = "terraform-test" //configure when scanner_type is "specific"
+  url = "us-east-1"
+  scanner_name = []
+  scanner_type = "any"
 
-  username    = ""
-  password    = ""
-  client_cert = ""
-  client_key  = ""
+  username = ""
+  password = ""
   webhook {
     enabled       = true
     url           = "https://khulnasoft.com/"
     auth_token    = "test1-test2-test3"
     un_quarantine = false
   }
-  auto_scan_time {
-    auto_pull_day  = 1
-    iteration      = 1
-    iteration_type = "week"                                                   // "none", "day", "week", "month"
-    time           = "2025-07-09T08:45:00Z"                                   //YYYY-MM-DDTHH:MM:SSZ
-    week_days      = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] // ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  }
-
-  force_ootb = false
-  force_save = false
 }
 ```
 
@@ -91,73 +71,39 @@ resource "khulnasoft_integration_registry" "integration_registry" {
 ### Required
 
 - `name` (String) The name of the registry; string, required - this will be treated as the registry's ID, so choose a simple alphanumerical name without special signs and spaces
-- `type` (String) Registry type (HUB / V1 / V2 / ACR / GAR / AWS / GCR / ENGINE / CTRDENGINE / ART / NEXUS / QUAY / DTR / ATOMIC / OPENSHIFT / CF / HARBOR / ICR / PODMAN)
+- `type` (String) Registry type (HUB / V1 / V2 / ACR / GAR / ENGINE / AWS / GCR).
 
 ### Optional
 
 - `advanced_settings_cleanup` (Boolean) Automatically clean up that don't match the pull criteria
 - `always_pull_patterns` (List of String) List of image patterns to pull always
-- `architecture` (String) The architecture of the registry
 - `author` (String) The username of the user who created or last modified the registry
 - `auto_cleanup` (Boolean) Automatically clean up images and repositories which are no longer present in the registry from Khulnasoft console
 - `auto_pull` (Boolean) Whether to automatically pull images from the registry on creation and daily
 - `auto_pull_interval` (Number) The interval in days to start pulling new images from the registry, Defaults to 1
-- `auto_pull_latest_xff_enabled` (Boolean) Auto pull latest xff enabled
 - `auto_pull_max` (Number) Maximum number of repositories to pull every day, defaults to 100
 - `auto_pull_rescan` (Boolean) Whether to automatically pull and rescan images from the registry on creation and daily
 - `auto_pull_time` (String) The time of day to start pulling new images from the registry, in the format HH:MM (24-hour clock), defaults to 03:00
-- `auto_scan_time` (Block Set) When enabled, registry events are sent to the given Khulnasoft webhook url (see [below for nested schema](#nestedblock--auto_scan_time))
-- `client_cert` (String) The client certificate for the registry
-- `client_key` (String) The client key for the registry
-- `cloud_resources` (List of String) The cloud resource of the registry
 - `description` (String) The description of the registry
-- `error_msg` (String) The error message of the registry
-- `force_ootb` (Boolean) To identify and ignore supersonic client calls initiated from OOTB
-- `force_save` (Boolean) Whether to force save the registry even if the test connection fails
 - `image_creation_date_condition` (String) Additional condition for pulling and rescanning images, Defaults to 'none'
-- `image_s3_prefixes` (List of String) The S3 prefixes for images
-- `is_architecture_system_default` (Boolean) Whether the architecture is the system default
 - `lastupdate` (Number) The last time the registry was modified in UNIX time
-- `nexus_mtts_ff_enabled` (Boolean) Enable mutual TLS for Sonatype Nexus Repository
 - `options` (Block List) (see [below for nested schema](#nestedblock--options))
 - `password` (String) The password for registry authentication
-- `permission` (String) Permission action
 - `prefixes` (List of String) List of possible prefixes to image names pulled from the registry
 - `pull_image_age` (String) When auto pull image enabled, sets maximum age of auto pulled images (for example for 5 Days the value should be: 5D), Requires `image_creation_date_condition = "image_age"`
 - `pull_image_count` (Number) When auto pull image enabled, sets maximum age of auto pulled images tags from each repository (based on image creation date) Requires `image_creation_date_condition = "image_count"`
 - `pull_image_tag_pattern` (List of String) List of image tags patterns to pull
-- `pull_max_tags` (Number) The maximum number of tags for auto pull
-- `pull_repo_patterns` (List of String) Patterns for repositories to be pulled from auto pull
 - `pull_repo_patterns_excluded` (List of String) List of image patterns to exclude
-- `pull_tags_pattern` (List of String) Patterns for tags to be pulled from auto pull
 - `registry_scan_timeout` (Number) Registry scan timeout in Minutes
-- `scanner_group_name` (String) The scanner group name (required when scanner_type = "specific" type)
 - `scanner_name` (List of String) List of scanner names
-- `scanner_type` (String) The Scanner type (either "any" or "specific")
+- `scanner_type` (String) The Scanner type
 - `url` (String) The URL, address or region of the registry
 - `username` (String) The username for registry authentication.
 - `webhook` (Block Set) When enabled, registry events are sent to the given Khulnasoft webhook url (see [below for nested schema](#nestedblock--webhook))
 
 ### Read-Only
 
-- `auto_pull_in_progress` (Boolean) Whether auto pull is in progress
-- `auto_pull_processed_page_number` (Number) The page number processed for auto pull
-- `detected_type` (Number) The detected type of the registry
 - `id` (String) The ID of this resource.
-- `is_registry_connected` (Boolean) Whether the registry is connected
-- `registries_type` (String) The type of registries
-
-<a id="nestedblock--auto_scan_time"></a>
-### Nested Schema for `auto_scan_time`
-
-Optional:
-
-- `auto_pull_day` (Number) The day for auto pull
-- `iteration` (Number) Number of iterations
-- `iteration_type` (String) The type of iteration (day, week, month, year)
-- `time` (String) the time for auto pull
-- `week_days` (List of String) The days of week for auto pull
-
 
 <a id="nestedblock--options"></a>
 ### Nested Schema for `options`

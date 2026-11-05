@@ -15,10 +15,6 @@ func dataSourceUsersSaas() *schema.Resource {
 			"users management. The fields returned from this query are detailed in the Schema section below.",
 		ReadContext: resourceReadSaas,
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"users": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -35,7 +31,7 @@ func dataSourceUsersSaas() *schema.Resource {
 								Type: schema.TypeString,
 							},
 						},
-						"id": {
+						"user_id": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -71,18 +67,14 @@ func dataSourceUsersSaas() *schema.Resource {
 							Type:     schema.TypeBool,
 							Computed: true,
 						},
-						"mfa_enabled": {
-							Type:     schema.TypeBool,
-							Computed: true,
-						},
 						"created": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						//"provider": {
-						//	Type:     schema.TypeString,
-						//	Computed: true,
-						//},
+						"provider": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
 						"multiaccount": {
 							Type:     schema.TypeBool,
 							Computed: true,
@@ -124,37 +116,12 @@ func dataSourceUsersSaas() *schema.Resource {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
-									"csp_roles": {
-										Type:     schema.TypeList,
+									"user_id": {
+										Type:     schema.TypeInt,
 										Computed: true,
-										Elem: &schema.Schema{
-											Type: schema.TypeString,
-										},
-									},
-									"cspm_groups": {
-										Type:     schema.TypeList,
-										Computed: true,
-										Elem: &schema.Schema{
-											Type: schema.TypeString,
-										},
-									},
-									"groups": {
-										Type:     schema.TypeList,
-										Computed: true,
-										Elem: &schema.Schema{
-											Type: schema.TypeString,
-										},
 									},
 								},
 							},
-						},
-						"count_failed_signin": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-						"last_signin_attempt": {
-							Type:     schema.TypeString,
-							Computed: true,
 						},
 					},
 				},

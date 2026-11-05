@@ -9,8 +9,6 @@ import (
 )
 
 func TestKhulnasoftAcknowledge(t *testing.T) {
-	//t.Skip()
-	t.Parallel()
 	// Define the issue to be acknowledged
 	issue := map[string]interface{}{
 		"docker_id":        "",
@@ -64,7 +62,7 @@ resource "khulnasoft_image" "example_khulnasoft_image" {
 
     provisioner "local-exec" {
     command = <<EOT
-      sleep 120
+      sleep 60
     EOT
   }
 }

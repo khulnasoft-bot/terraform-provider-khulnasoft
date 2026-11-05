@@ -21,7 +21,6 @@ description: |-
 
 ### Read-Only
 
-- `aggregated_vulnerability` (List of Object) Aggregated vulnerability information. (see [below for nested schema](#nestedatt--aggregated_vulnerability))
 - `allowed_images` (List of String) List of explicitly allowed images.
 - `application_scopes` (List of String)
 - `audit_on_failure` (Boolean) Indicates if auditing for failures.
@@ -34,7 +33,6 @@ description: |-
 - `blacklisted_licenses` (List of String) List of blacklisted licenses.
 - `blacklisted_licenses_enabled` (Boolean) Indicates if license blacklist is relevant.
 - `block_failed` (Boolean) Indicates if failed images are blocked.
-- `category` (String)
 - `control_exclude_no_fix` (Boolean)
 - `custom_checks` (List of Object) List of Custom user scripts for checks. (see [below for nested schema](#nestedatt--custom_checks))
 - `custom_checks_enabled` (Boolean) Indicates if scanning should include custom checks.
@@ -64,14 +62,10 @@ description: |-
 - `force_microenforcer` (Boolean)
 - `function_integrity_enabled` (Boolean)
 - `id` (String) The ID of this resource.
-- `ignore_base_image_vln` (Boolean)
-- `ignore_recently_published_fix_vln` (Boolean)
-- `ignore_recently_published_fix_vln_period` (Number)
 - `ignore_recently_published_vln` (Boolean)
 - `ignore_recently_published_vln_period` (Number)
 - `ignore_risk_resources_enabled` (Boolean) Indicates if risk resources are ignored.
 - `ignored_risk_resources` (List of String) List of ignored risk resources.
-- `ignored_sensitive_resources` (List of String)
 - `images` (List of String) List of images.
 - `kube_cis_enabled` (Boolean) Performs a Kubernetes CIS benchmark check for the host.
 - `labels` (List of String) List of labels.
@@ -100,17 +94,6 @@ description: |-
 - `trusted_base_images_enabled` (Boolean) Indicates if list of trusted base images is relevant.
 - `whitelisted_licenses` (List of String) List of whitelisted licenses.
 - `whitelisted_licenses_enabled` (Boolean) Indicates if license blacklist is relevant.
-
-<a id="nestedatt--aggregated_vulnerability"></a>
-### Nested Schema for `aggregated_vulnerability`
-
-Read-Only:
-
-- `custom_severity_enabled` (Boolean)
-- `enabled` (Boolean)
-- `score_range` (List of Number)
-- `severity` (String)
-
 
 <a id="nestedatt--auto_scan_time"></a>
 ### Nested Schema for `auto_scan_time`

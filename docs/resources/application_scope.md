@@ -14,59 +14,52 @@ description: |-
 
 ```terraform
 resource "khulnasoft_application_scope" "terraformiap" {
-  description = "test123"
-  name        = "test18"
-  // Categories is a nested block of artifacts, workloads and infrastructure
-  categories {
-    // Artifacts is a nested block of Image, Function, CF, and CodeBuild
-    artifacts {
-      // Every object requires expression(logical combinations of variables v1, v2, v3...) and list of variables consists of attribute(pre-defined) and value
-      image {
-        expression = "v1 && v2"
-        variables {
-          attribute = "khulnasoft.registry"
-          value     = "test-registry"
+    description = "test123"
+    name        = "test18"
+    // Categories is a nested block of artifacts, workloads and infrastructure
+    categories {
+        // Artifacts is a nested block of Image, Function, CF
+        artifacts {
+            // Every object requires expression(logical combinations of variables v1, v2, v3...) and list of variables consists of attribute(pre-defined) and value
+            image {
+                expression = "v1 && v2"
+                variables {
+                    attribute = "khulnasoft.registry"
+                    value     = "test-registry"
+                }
+                variables {
+                    attribute = "image.repo"
+                    value     = "nginx"
+                }
+            }
         }
-        variables {
-          attribute = "image.repo"
-          value     = "nginx"
+        // Workloads is a nested block of Kubernetes, OS, CF
+        workloads {
+            // Every object requires expression(logical combinations of variables v1, v2, v3...) and list of variables consists of attribute(pre-defined) and value
+            kubernetes {
+                expression = "v1 && v2"
+                variables {
+                    attribute = "kubernetes.cluster"
+                    value     = "khulnasoft"
+                }
+                variables {
+                    attribute = "kubernetes.namespace"
+                    value     = "khulnasoft"
+                }
+            }
         }
-      }
-      codebuild {
-        expression = "v1"
-        variables {
-          attribute = "khulnasoft.topic"
-          value     = "topic1"
+        // Infrastructure is a nested block of Kubernetes, OS
+        infrastructure {
+            // Every object requires expression and list of variables consists of attribute(pre-defined) and value
+            kubernetes {
+                expression = "v1"
+                variables {
+                    attribute = "kubernetes.cluster"
+                    value     = "khulnasoft"
+                }
+            }
         }
-      }
     }
-    // Workloads is a nested block of Kubernetes, OS, CF
-    workloads {
-      // Every object requires expression(logical combinations of variables v1, v2, v3...) and list of variables consists of attribute(pre-defined) and value
-      kubernetes {
-        expression = "v1 && v2"
-        variables {
-          attribute = "kubernetes.cluster"
-          value     = "khulnasoft"
-        }
-        variables {
-          attribute = "kubernetes.namespace"
-          value     = "khulnasoft"
-        }
-      }
-    }
-    // Infrastructure is a nested block of Kubernetes, OS
-    infrastructure {
-      // Every object requires expression and list of variables consists of attribute(pre-defined) and value
-      kubernetes {
-        expression = "v1"
-        variables {
-          attribute = "kubernetes.cluster"
-          value     = "khulnasoft"
-        }
-      }
-    }
-  }
 }
 ```
 
@@ -107,7 +100,6 @@ Read-Only:
 Optional:
 
 - `cf` (Block Set) (see [below for nested schema](#nestedblock--categories--artifacts--cf))
-- `codebuild` (Block Set) AWS CodeBuild configuration (see [below for nested schema](#nestedblock--categories--artifacts--codebuild))
 - `function` (Block Set) Function name (see [below for nested schema](#nestedblock--categories--artifacts--function))
 - `image` (Block Set) Name of a registry as defined in Khulnasoft (see [below for nested schema](#nestedblock--categories--artifacts--image))
 
@@ -125,26 +117,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
-- `value` (String)
-
-
-
-<a id="nestedblock--categories--artifacts--codebuild"></a>
-### Nested Schema for `categories.artifacts.codebuild`
-
-Optional:
-
-- `expression` (String)
-- `variables` (Block List) (see [below for nested schema](#nestedblock--categories--artifacts--codebuild--variables))
-
-<a id="nestedblock--categories--artifacts--codebuild--variables"></a>
-### Nested Schema for `categories.artifacts.codebuild.variables`
-
-Optional:
-
-- `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -163,7 +135,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -182,7 +153,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -210,7 +180,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -229,7 +198,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -258,7 +226,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -277,7 +244,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -296,7 +262,6 @@ Optional:
 Optional:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 
@@ -316,7 +281,6 @@ Read-Only:
 Read-Only:
 
 - `attribute` (String)
-- `name` (String)
 - `value` (String)
 
 

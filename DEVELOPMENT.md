@@ -32,7 +32,7 @@ git clone https://github.com/khulnasoft/terraform-provider-khulnasoft.git
 
 cd terraform-provider-khulnasoft
 
-git checkout v0.15.0
+git checkout v0.8.30
 ```
 
 **Build and install the provider**
@@ -55,7 +55,7 @@ In order to test the provider installed locally, the provider block will have to
 terraform {
   required_providers {
     khulnasoft = {
-      version = "7"
+      version = "0.8.30"
       source  = "terraform-provider-khulnasoft/khulnasoft/khulnasoft"
     }
   }
@@ -76,7 +76,7 @@ Finally, make sure to replace the Khulnasoft credentials and URL in the `provide
 ```
 provider "khulnasoft" {
   username = "admin"
-  khulnasoft_url = "https://khulnasofturl.com"
+  khulnasoft_url = "https://khulnasoft.com"
   password = "@password"
 }
 ```

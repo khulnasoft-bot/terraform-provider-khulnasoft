@@ -1,18 +1,16 @@
-## 0.15.2 (Unreleased)
+## 0.9.0 (Unreleased)
 
-BUG FIXES:
+FEATURES:
 
-* `khulnasoft_container_runtime_policy`: Preserve `allowed_executables` while upgrading legacy state layouts.
-* `khulnasoft_permission_set_saas` and `khulnasoft_role_mapping_saas`: Use current SaaS access-management endpoints and normalize server-provided action names.
-* `khulnasoft_service` and `khulnasoft_firewall_policy`: Canonicalize omitted `anywhere` firewall resources as `0.0.0.0/0` to prevent persistent plan differences.
-* SaaS development authentication: Route API-key provisioning through the development endpoint.
+* **New Authentication Method**: Added comprehensive API key authentication support with `khulnasoft_api_key_id` and `khulnasoft_api_secret` configuration options
+* **AWS CodeBuild Integration**: Added support for AWS CodeBuild in the application scope resource for enhanced cloud workload protection
+* **Development Tools Enhancement**: Added comprehensive development tools including improved Makefile, linting, testing, and documentation generation
 
-## 0.15.1 (June 24, 2026)
+IMPROVEMENTS:
 
-BUG FIXES:
-
-* `khulnasoft_application_scope_saas`: Fix "unexpected end of JSON input" error on all CRUD operations. The SaaS code path was routing to an incorrect API endpoint. Now uses the auto-resolved CSP URL with the correct `/api/v2/access_management/scopes` path. No user configuration change required. ([#388](https://github.com/khulnasoft/terraform-provider-khulnasoft/pull/388))
-
-## 0.1.0 (Unreleased)
+* **Runtime Policy**: Enhanced runtime policy handling with improved error handling and serverless application support
+* **Dependencies**: Updated Go module dependencies for improved security and compatibility
 
 BACKWARDS INCOMPATIBILITIES / NOTES:
+
+* This release introduces new authentication options but maintains backward compatibility with existing username/password authentication

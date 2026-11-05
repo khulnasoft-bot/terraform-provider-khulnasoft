@@ -8,6 +8,7 @@ import (
 	"github.com/khulnasoft/terraform-provider-khulnasoft/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 func resourceFunctionAssurancePolicy() *schema.Resource {
@@ -21,22 +22,14 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 		Schema: map[string]*schema.Schema{
+
 			"assurance_type": {
 				Type:        schema.TypeString,
 				Description: "What type of assurance policy is described.",
-				Required:    true,
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					s, ok := val.(string)
-					if !ok {
-						errs = append(errs, fmt.Errorf("%q must be a string, got %T", key, val))
-						return
-					}
-					if strings.ToLower(s) != "function" {
-						errs = append(errs, fmt.Errorf("%q must be \"function\" (case-insensitive), got %q", key, s))
-					}
-					return
-				},
+				Optional:    true,
+				Computed:    true,
 			},
+
 			"id": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -68,10 +61,9 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 				Optional:    true,
 			},
 			"cvss_severity_exclude_no_fix": {
-				Type:             schema.TypeBool,
-				Description:      "Indicates that policy should ignore cvss cases that do not have a known fix.",
-				Optional:         true,
-				DiffSuppressFunc: suppressExcludeNoFixDiff("cvss_severity_enabled"),
+				Type:        schema.TypeBool,
+				Description: "Indicates that policy should ignore cvss cases that do not have a known fix.",
+				Optional:    true,
 			},
 			"custom_severity_enabled": {
 				Type:     schema.TypeBool,
@@ -83,9 +75,10 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 				Optional:    true,
 			},
 			"maximum_score": {
-				Type:        schema.TypeFloat,
-				Description: "Value of allowed maximum score.",
-				Optional:    true,
+				Type:         schema.TypeFloat,
+				Description:  "Value of allowed maximum score.",
+				Optional:     true,
+				ValidateFunc: validation.FloatBetween(0, 10),
 			},
 			"control_exclude_no_fix": {
 				Type:     schema.TypeBool,
@@ -183,7 +176,7 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 			},
 			"whitelisted_licenses_enabled": {
 				Type:        schema.TypeBool,
-				Description: "Indicates if license blacklist is relevant.",
+				Description: "Indicates if license whitelist is relevant.",
 				Optional:    true,
 			},
 			"whitelisted_licenses": {
@@ -500,8 +493,9 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 				Optional: true,
 			},
 			"enforce_after_days": {
-				Type:     schema.TypeInt,
-				Optional: true,
+				Type:         schema.TypeInt,
+				Optional:     true,
+				ValidateFunc: validation.IntBetween(0, 999),
 			},
 			"ignore_recently_published_vln": {
 				Type:     schema.TypeBool,
@@ -649,10 +643,9 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 				Optional: true,
 			},
 			"maximum_score_exclude_no_fix": {
-				Type:             schema.TypeBool,
-				Description:      "",
-				Optional:         true,
-				DiffSuppressFunc: suppressExcludeNoFixDiff("maximum_score_enabled"),
+				Type:        schema.TypeBool,
+				Description: "Indicates that policy should ignore cases that do not have a known fix when evaluating maximum score.",
+				Optional:    true,
 			},
 			//JSON
 			"lastupdate": {
@@ -663,13 +656,13 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 			}, // String
 			"custom_severity": {
 				Type:        schema.TypeString,
-				Description: "",
+				Description: "Custom severity level for vulnerability assessment.",
 				Optional:    true,
 				Computed:    true,
 			}, // string
 			"vulnerability_exploitability": {
 				Type:        schema.TypeBool,
-				Description: "",
+				Description: "Enable vulnerability exploitability assessment.",
 				Optional:    true,
 			}, //bool
 			"disallow_exploit_types": {
@@ -836,43 +829,6 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 					Type: schema.TypeInt,
 				},
 			}, // list
-			"aggregated_vulnerability": {
-				Type:        schema.TypeList,
-				Description: "Aggregated vulnerability information.",
-				Optional:    true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"enabled": {
-							Type:        schema.TypeBool,
-							Description: "Enable the aggregated vulnerability",
-							Optional:    true,
-						},
-						"score_range": {
-							Type:     schema.TypeList,
-							Optional: true,
-							MinItems: 1,
-							Elem: &schema.Schema{
-								Type: schema.TypeFloat,
-							},
-							Description: "Indicates score range for vuln score eg [5.5, 6.0]",
-						},
-						"custom_severity_enabled": {
-							Type:        schema.TypeBool,
-							Optional:    true,
-							Description: "Indicates to consider custom severity during control evaluation",
-						},
-						"severity": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "Max severity to be allowed in the image",
-						},
-					},
-				},
-			},
-			"category": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 		},
 	}
 }
@@ -880,7 +836,7 @@ func resourceFunctionAssurancePolicy() *schema.Resource {
 func resourceFunctionAssurancePolicyCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type, _ := d.Get("assurance_type").(string)
+	assurance_type := "function"
 
 	iap := expandAssurancePolicy(d, assurance_type)
 	err := ac.CreateAssurancePolicy(iap, assurance_type)
@@ -895,7 +851,7 @@ func resourceFunctionAssurancePolicyCreate(ctx context.Context, d *schema.Resour
 
 func resourceFunctionAssurancePolicyUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "function"
 
 	if d.HasChanges("description",
 		"registry",
@@ -988,10 +944,7 @@ func resourceFunctionAssurancePolicyUpdate(ctx context.Context, d *schema.Resour
 		"linux_cis_enabled",
 		"openshift_hardening_enabled",
 		"kubernetes_controls_avd_ids",
-		"category",
-		"ignore_recently_published_fix_vln",
-		"ignore_recently_published_fix_vln_period",
-		"aggregated_vulnerability",
+		"vulnerability_score_range",
 	) {
 		iap := expandAssurancePolicy(d, assurance_type)
 		err := ac.UpdateAssurancePolicy(iap, assurance_type)
@@ -1011,7 +964,7 @@ func resourceFunctionAssurancePolicyUpdate(ctx context.Context, d *schema.Resour
 
 func resourceFunctionAssurancePolicyRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
-	assurance_type := d.Get("assurance_type").(string)
+	assurance_type := "function"
 
 	iap, err := ac.GetAssurancePolicy(d.Id(), assurance_type)
 
@@ -1116,12 +1069,7 @@ func resourceFunctionAssurancePolicyRead(ctx context.Context, d *schema.Resource
 	d.Set("linux_cis_enabled", iap.LinuxCisEnabled)
 	d.Set("openshift_hardening_enabled", iap.OpenshiftHardeningEnabled)
 	d.Set("kubernetes_controls_avd_ids", iap.KubernetesControlsAvdIds)
-	d.Set("ignore_recently_published_fix_vln", iap.IgnoreRecentlyPublishedFixVln)
-	d.Set("ignore_recently_published_fix_vln_period", iap.IgnoreRecentlyPublishedFixVlnPeriod)
-	d.Set("category", iap.Category)
-	if _, ok := d.GetOk("aggregated_vulnerability"); ok {
-		d.Set("aggregated_vulnerability", flattenAggregatedVulnerability(iap.AggregatedVulnerability))
-	}
+	d.Set("vulnerability_score_range", iap.VulnerabilityScoreRange)
 
 	return nil
 }
@@ -1129,8 +1077,7 @@ func resourceFunctionAssurancePolicyRead(ctx context.Context, d *schema.Resource
 func resourceFunctionAssurancePolicyDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	ac := m.(*client.Client)
 	name := d.Get("name").(string)
-	assurance_type := d.Get("assurance_type").(string)
-
+	assurance_type := "function"
 	err := ac.DeleteAssurancePolicy(name, assurance_type)
 
 	if err == nil {
